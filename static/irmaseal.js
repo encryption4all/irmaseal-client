@@ -1,5 +1,5 @@
-import irmaFrontend from "@privacybydesign/irma-frontend";
-import init, {encrypt, decrypt, extract_timestamp} from "./wasm.js";
+import * as irma from "./irma.js";
+import init, { encrypt, decrypt, extract_timestamp } from "./wasm.js";
 
 class Client {
   // Don't use the constructor -- use Client.build().
@@ -55,28 +55,27 @@ class Client {
 
   // 1) Start IRMA session, resulting in a token
   requestToken(whose) {
-    return irmaFrontend
-      .newPopup({
-        session: {
-          url: this.url,
-          start: {
-            url: (o) => `${o.url}/v1/request`,
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              attribute: {
-                type: "pbdf.sidn-pbdf.email.email",
-                value: whose,
-              },
-            }),
-          },
-          mapping: {
-            sessionPtr: (r) => JSON.parse(r.qr),
-            sessionToken: (r) => r.token,
-          },
-          result: false,
+    return newPopup({
+      session: {
+        url: this.url,
+        start: {
+          url: (o) => `${o.url}/v1/request`,
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            attribute: {
+              type: "pbdf.sidn-pbdf.email.email",
+              value: whose,
+            },
+          }),
         },
-      })
+        mapping: {
+          sessionPtr: (r) => JSON.parse(r.qr),
+          sessionToken: (r) => r.token,
+        },
+        result: false,
+      },
+    })
       .start()
       .then((map) => map.sessionToken);
   }
