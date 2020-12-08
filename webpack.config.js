@@ -7,6 +7,10 @@ module.exports = {
     path: path.resolve(__dirname, "dist"),
     filename: "bundle.js",
   },
+
+  experiments: {
+    asyncWebAssembly: true,
+  },
   plugins: [
     new WasmPackPlugin({
       crateDirectory: path.resolve(__dirname, "."),

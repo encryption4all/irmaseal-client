@@ -10,7 +10,7 @@ class Client {
 
   // Creates a new client for the irmaseal-pkg with the given url.
   static async build(url) {
-    let module = await import(".");
+    let module = await import("./pkg");
     let resp = await fetch(url + "/v1/parameters");
     let params = await resp.text();
     let client = new Client(url, params, module);
@@ -99,3 +99,5 @@ class Client {
     });
   }
 }
+
+export default Client;
