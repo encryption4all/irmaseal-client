@@ -17,7 +17,7 @@ module.exports = {
     libraryTarget: "var",
   },
   experiments: {
-    asyncWebAssembly: true,
+    syncWebAssembly: true,
   },
   devServer: {
     contentBase: dist,
