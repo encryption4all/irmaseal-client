@@ -27,7 +27,7 @@ module.exports = {
     new CopyPlugin({ patterns: [{ from: "static" }] }),
       new WasmPackPlugin({
         crateDirectory: path.resolve(__dirname, "."),
-        extraArgs: "--no-typescript",
+        extraArgs: "--no-typescript --target web",
       }),
   ],
 };
