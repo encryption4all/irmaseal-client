@@ -1,2 +1,2 @@
-const Test = require('./irmaseal').default;
-module.exports = Test;
+const Client = require('./irmaseal').default;
+module.exports = Client;

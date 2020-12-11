@@ -13,21 +13,21 @@ module.exports = {
   output: {
     path: dist,
     filename: "irmaseal.js",
-    library: "MyLib",
+    library: "Client",
     libraryTarget: "var",
   },
-  //experiments: {
-  //  asyncWebAssembly: true,
-  //},
+  experiments: {
+    asyncWebAssembly: true,
+  },
   devServer: {
     contentBase: dist,
   },
   plugins: [
-    new HtmlWebpackPlugin(),
-    //new CopyPlugin({ patterns: [{ from: "static" }] }),
-    //  new WasmPackPlugin({
-    //    crateDirectory: path.resolve(__dirname, "."),
-    //    extraArgs: "--no-typescript",
-    //  }),
+    //new HtmlWebpackPlugin(),
+    new CopyPlugin({ patterns: [{ from: "static" }] }),
+      new WasmPackPlugin({
+        crateDirectory: path.resolve(__dirname, "."),
+        extraArgs: "--no-typescript",
+      }),
   ],
 };
