@@ -1,5 +1,4 @@
-import { irmaFrontend } from "@privacybydesign/irma-frontend";
-//import { encrypt, decrypt, extract_timestamp } from "./node_modules/irmaseal-js";
+const irmaFrontend = require("@privacybydesign/irma-frontend");
 
 export default class Client {
   // Don't use the constructor -- use Client.build().

@@ -27,7 +27,7 @@ eval("const Client = __webpack_require__(/*! ./irmaseal */ \"./irmaseal.js\").de
 /***/ ((__unused_webpack_module, __webpack_exports__, __webpack_require__) => {
 
 "use strict";
-eval("__webpack_require__.r(__webpack_exports__);\n/* harmony export */ __webpack_require__.d(__webpack_exports__, {\n/* harmony export */   \"default\": () => /* binding */ Client\n/* harmony export */ });\n/* harmony import */ var _privacybydesign_irma_frontend__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! @privacybydesign/irma-frontend */ \"./node_modules/@privacybydesign/irma-frontend/dist/irma.js\");\n/* harmony import */ var _privacybydesign_irma_frontend__WEBPACK_IMPORTED_MODULE_0___default = /*#__PURE__*/__webpack_require__.n(_privacybydesign_irma_frontend__WEBPACK_IMPORTED_MODULE_0__);\n\n//import { encrypt, decrypt, extract_timestamp } from \"./node_modules/irmaseal-js\";\n\nclass Client {\n  // Don't use the constructor -- use Client.build().\n  constructor(url, params, module) {\n    this.url = url;\n    this.params = params;\n    this.module = module;\n  }\n\n  // Creates a new client for the irmaseal-pkg with the given url.\n  static async build(url) {\n    let module = await __webpack_require__.e(/*! import() */ \"pkg_index_js\").then(__webpack_require__.bind(__webpack_require__, /*! ./pkg */ \"./pkg/index.js\"));\n    let resp = await fetch(url + \"/v1/parameters\");\n    let params = await resp.text();\n    let client = new Client(url, params, module);\n    return client;\n  }\n\n  // Returns the timestamp from a ciphertext.\n  extractTimestamp(ciphertext) {\n    return this.module.extract_timestamp(ciphertext);\n  }\n\n  encrypt(whom, what) {\n    // We JSON encode the what object, pad it to a multiple of 2^9 bytes\n    // with size prefixed and then pass it to irmaseal.\n    let encoder = new TextEncoder();\n    let bWhat = encoder.encode(JSON.stringify(what));\n    let l = bWhat.byteLength;\n    if (l >= 65536 - 2) {\n      throw new Error(\"Too large to encrypt\");\n    }\n    const paddingBits = 9; // pad to 2^9 - 2 = 510\n    let paddedLength = (((l + 1) >> paddingBits) + 1) << paddingBits;\n    let buf = new ArrayBuffer(paddedLength);\n    let buf8 = new Uint8Array(buf);\n    buf8[0] = l >> 8;\n    buf8[1] = l & 255;\n    new Uint8Array(buf, 2).set(new Uint8Array(bWhat));\n    return this.module.encrypt(\n      \"pbdf.sidn-pbdf.email.email\",\n      whom,\n      new Uint8Array(buf),\n      this.params\n    );\n  }\n\n  decrypt(key, ct) {\n    let buf = this.module.decrypt(ct, key);\n    let len = (buf[0] << 8) | buf[1];\n    let decoder = new TextDecoder();\n    return JSON.parse(decoder.decode(buf.slice(2, 2 + len)));\n  }\n\n  // 1) Start IRMA session, resulting in a token\n  requestToken(whose) {\n    return _privacybydesign_irma_frontend__WEBPACK_IMPORTED_MODULE_0__.irmaFrontend.newPopup({\n        session: {\n          url: this.url,\n          start: {\n            url: (o) => `${o.url}/v1/request`,\n            method: \"POST\",\n            headers: { \"Content-Type\": \"application/json\" },\n            body: JSON.stringify({\n              attribute: {\n                type: \"pbdf.sidn-pbdf.email.email\",\n                value: whose,\n              },\n            }),\n          },\n          mapping: {\n            sessionPtr: (r) => JSON.parse(r.qr),\n            sessionToken: (r) => r.token,\n          },\n          result: false,\n        },\n      })\n      .start()\n      .then((map) => map.sessionToken);\n  }\n\n  // 2) Acquire a key per timestamp using said token\n  requestKey(token, timestamp) {\n    let url = this.url;\n    return new Promise(function (resolve, reject) {\n      fetch(`${url}/v1/request/${token}/${timestamp.toString()}`)\n        .then((resp) => {\n          return resp.status !== 200\n            ? reject(new Error(\"not ok\"))\n            : resp.json();\n        })\n        .then((json) => {\n          return json.status !== \"DONE_VALID\"\n            ? reject(new Error(\"not valid\"))\n            : resolve(json.key);\n        });\n    });\n  }\n}\n\n\n//# sourceURL=webpack://Client/./irmaseal.js?");
+eval("__webpack_require__.r(__webpack_exports__);\n/* harmony export */ __webpack_require__.d(__webpack_exports__, {\n/* harmony export */   \"default\": () => /* binding */ Client\n/* harmony export */ });\nconst irmaFrontend = __webpack_require__(/*! @privacybydesign/irma-frontend */ \"./node_modules/@privacybydesign/irma-frontend/dist/irma.js\");\n\nclass Client {\n  // Don't use the constructor -- use Client.build().\n  constructor(url, params, module) {\n    this.url = url;\n    this.params = params;\n    this.module = module;\n  }\n\n  // Creates a new client for the irmaseal-pkg with the given url.\n  static async build(url) {\n    let module = await __webpack_require__.e(/*! import() */ \"pkg_index_js\").then(__webpack_require__.bind(__webpack_require__, /*! ./pkg */ \"./pkg/index.js\"));\n    let resp = await fetch(url + \"/v1/parameters\");\n    let params = await resp.text();\n    let client = new Client(url, params, module);\n    return client;\n  }\n\n  // Returns the timestamp from a ciphertext.\n  extractTimestamp(ciphertext) {\n    return this.module.extract_timestamp(ciphertext);\n  }\n\n  encrypt(whom, what) {\n    // We JSON encode the what object, pad it to a multiple of 2^9 bytes\n    // with size prefixed and then pass it to irmaseal.\n    let encoder = new TextEncoder();\n    let bWhat = encoder.encode(JSON.stringify(what));\n    let l = bWhat.byteLength;\n    if (l >= 65536 - 2) {\n      throw new Error(\"Too large to encrypt\");\n    }\n    const paddingBits = 9; // pad to 2^9 - 2 = 510\n    let paddedLength = (((l + 1) >> paddingBits) + 1) << paddingBits;\n    let buf = new ArrayBuffer(paddedLength);\n    let buf8 = new Uint8Array(buf);\n    buf8[0] = l >> 8;\n    buf8[1] = l & 255;\n    new Uint8Array(buf, 2).set(new Uint8Array(bWhat));\n    return this.module.encrypt(\n      \"pbdf.sidn-pbdf.email.email\",\n      whom,\n      new Uint8Array(buf),\n      this.params\n    );\n  }\n\n  decrypt(key, ct) {\n    let buf = this.module.decrypt(ct, key);\n    let len = (buf[0] << 8) | buf[1];\n    let decoder = new TextDecoder();\n    return JSON.parse(decoder.decode(buf.slice(2, 2 + len)));\n  }\n\n  // 1) Start IRMA session, resulting in a token\n  requestToken(whose) {\n    return irmaFrontend\n      .newPopup({\n        session: {\n          url: this.url,\n          start: {\n            url: (o) => `${o.url}/v1/request`,\n            method: \"POST\",\n            headers: { \"Content-Type\": \"application/json\" },\n            body: JSON.stringify({\n              attribute: {\n                type: \"pbdf.sidn-pbdf.email.email\",\n                value: whose,\n              },\n            }),\n          },\n          mapping: {\n            sessionPtr: (r) => JSON.parse(r.qr),\n            sessionToken: (r) => r.token,\n          },\n          result: false,\n        },\n      })\n      .start()\n      .then((map) => map.sessionToken);\n  }\n\n  // 2) Acquire a key per timestamp using said token\n  requestKey(token, timestamp) {\n    let url = this.url;\n    return new Promise(function (resolve, reject) {\n      fetch(`${url}/v1/request/${token}/${timestamp.toString()}`)\n        .then((resp) => {\n          return resp.status !== 200\n            ? reject(new Error(\"not ok\"))\n            : resp.json();\n        })\n        .then((json) => {\n          return json.status !== \"DONE_VALID\"\n            ? reject(new Error(\"not valid\"))\n            : resolve(json.key);\n        });\n    });\n  }\n}\n\n\n//# sourceURL=webpack://Client/./irmaseal.js?");
 
 /***/ }),
 
@@ -54,13 +54,16 @@ eval("!function(t,e){ true?module.exports=e():0}(window,(function(){return funct
 /******/ 		}
 /******/ 		// Create a new module (and put it into the cache)
 /******/ 		var module = __webpack_module_cache__[moduleId] = {
-/******/ 			// no module.id needed
-/******/ 			// no module.loaded needed
+/******/ 			id: moduleId,
+/******/ 			loaded: false,
 /******/ 			exports: {}
 /******/ 		};
 /******/ 	
 /******/ 		// Execute the module function
 /******/ 		__webpack_modules__[moduleId](module, module.exports, __webpack_require__);
+/******/ 	
+/******/ 		// Flag the module as loaded
+/******/ 		module.loaded = true;
 /******/ 	
 /******/ 		// Return the exports of the module
 /******/ 		return module.exports;
@@ -70,18 +73,6 @@ eval("!function(t,e){ true?module.exports=e():0}(window,(function(){return funct
 /******/ 	__webpack_require__.m = __webpack_modules__;
 /******/ 	
 /************************************************************************/
-/******/ 	/* webpack/runtime/compat get default export */
-/******/ 	(() => {
-/******/ 		// getDefaultExport function for compatibility with non-harmony modules
-/******/ 		__webpack_require__.n = (module) => {
-/******/ 			var getter = module && module.__esModule ?
-/******/ 				() => module['default'] :
-/******/ 				() => module;
-/******/ 			__webpack_require__.d(getter, { a: getter });
-/******/ 			return getter;
-/******/ 		};
-/******/ 	})();
-/******/ 	
 /******/ 	/* webpack/runtime/define property getters */
 /******/ 	(() => {
 /******/ 		// define getter functions for harmony exports
@@ -126,6 +117,21 @@ eval("!function(t,e){ true?module.exports=e():0}(window,(function(){return funct
 /******/ 				if (typeof window === 'object') return window;
 /******/ 			}
 /******/ 		})();
+/******/ 	})();
+/******/ 	
+/******/ 	/* webpack/runtime/harmony module decorator */
+/******/ 	(() => {
+/******/ 		__webpack_require__.hmd = (module) => {
+/******/ 			module = Object.create(module);
+/******/ 			if (!module.children) module.children = [];
+/******/ 			Object.defineProperty(module, 'exports', {
+/******/ 				enumerable: true,
+/******/ 				set: () => {
+/******/ 					throw new Error('ES Modules may not assign module.exports or exports.*, Use ESM export syntax, instead: ' + module.id);
+/******/ 				}
+/******/ 			});
+/******/ 			return module;
+/******/ 		};
 /******/ 	})();
 /******/ 	
 /******/ 	/* webpack/runtime/hasOwnProperty shorthand */
@@ -302,6 +308,21 @@ eval("!function(t,e){ true?module.exports=e():0}(window,(function(){return funct
 /******/ 		var chunkLoadingGlobal = self["webpackChunkClient"] = self["webpackChunkClient"] || [];
 /******/ 		var parentChunkLoadingFunction = chunkLoadingGlobal.push.bind(chunkLoadingGlobal);
 /******/ 		chunkLoadingGlobal.push = webpackJsonpCallback;
+/******/ 	})();
+/******/ 	
+/******/ 	/* webpack/runtime/wasm chunk loading */
+/******/ 	(() => {
+/******/ 		__webpack_require__.v = (exports, wasmModuleId, wasmModuleHash, importsObj) => {
+/******/ 			var req = fetch(__webpack_require__.p + "" + wasmModuleHash + ".module.wasm");
+/******/ 			if (typeof WebAssembly.instantiateStreaming === 'function') {
+/******/ 				return WebAssembly.instantiateStreaming(req, importsObj)
+/******/ 					.then((res) => Object.assign(exports, res.instance.exports));
+/******/ 			}
+/******/ 			return req
+/******/ 				.then((x) => x.arrayBuffer())
+/******/ 				.then((bytes) => WebAssembly.instantiate(bytes, importsObj))
+/******/ 				.then((res) => Object.assign(exports, res.instance.exports));
+/******/ 		};
 /******/ 	})();
 /******/ 	
 /************************************************************************/
