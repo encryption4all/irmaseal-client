@@ -1,26 +1,26 @@
 import { irmaFrontend } from "@privacybydesign/irma-frontend";
-import { encrypt, decrypt, extract_timestamp } from "./node_modules/irmaseal-js";
+//import { encrypt, decrypt, extract_timestamp } from "./node_modules/irmaseal-js";
 
 export default class Client {
   // Don't use the constructor -- use Client.build().
-  constructor(url, params) {
+  constructor(url, params, module) {
     this.url = url;
     this.params = params;
-    //    = module;
+    this.module = module;
   }
 
   // Creates a new client for the irmaseal-pkg with the given url.
   static async build(url) {
-    //let module = await import("./pkg");
+    let module = await import("./pkg");
     let resp = await fetch(url + "/v1/parameters");
     let params = await resp.text();
-    let client = new Client(url, params);
+    let client = new Client(url, params, module);
     return client;
   }
 
   // Returns the timestamp from a ciphertext.
   extractTimestamp(ciphertext) {
-    return extract_timestamp(ciphertext);
+    return this.module.extract_timestamp(ciphertext);
   }
 
   encrypt(whom, what) {
@@ -39,7 +39,7 @@ export default class Client {
     buf8[0] = l >> 8;
     buf8[1] = l & 255;
     new Uint8Array(buf, 2).set(new Uint8Array(bWhat));
-    return encrypt(
+    return this.module.encrypt(
       "pbdf.sidn-pbdf.email.email",
       whom,
       new Uint8Array(buf),
@@ -48,7 +48,7 @@ export default class Client {
   }
 
   decrypt(key, ct) {
-    let buf = decrypt(ct, key);
+    let buf = this.module.decrypt(ct, key);
     let len = (buf[0] << 8) | buf[1];
     let decoder = new TextDecoder();
     return JSON.parse(decoder.decode(buf.slice(2, 2 + len)));
