@@ -5,7 +5,9 @@
     <script type="text/javascript" src="irmaseal.js"></script>
     <script>
       window.onload = async function () {
-        let client = await Client.build("https://qrona.info/pkg");
+        let client = await irmaseal.Client.build("https://qrona.info/pkg");
+        let ct = client.encrypt("leon.botros@gmail.com", { some: "stuff" });
+        console.log("done, ct: ", ct);
       };
     </script>
   </body>
