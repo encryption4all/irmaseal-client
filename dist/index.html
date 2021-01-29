@@ -2,13 +2,36 @@
 <html>
   <head></head>
   <body>
-    <script type="text/javascript" src="irmaseal.js"></script>
     <script>
-      window.onload = async function () {
-        let client = await irmaseal.Client.build("https://qrona.info/pkg");
-        let ct = client.encrypt("leon.botros@gmail.com", { some: "stuff" });
-        console.log("done, ct: ", ct);
-      };
+      import("./irmaseal.js")
+        .then(() => {
+          console.log("irmaseal loaded");
+          irmaseal.Client.build("https://qrona.info/pkg").then((client) => {
+            console.log("client initialized");
+
+            var email = window.prompt("email", "");
+
+            let some_object = {
+              some: "object",
+            };
+
+            console.log("encrypting some object:", some_object);
+            let ct = client.encrypt(email, some_object);
+            console.log("ct:", ct);
+
+            let timestamp = client.extractTimestamp(ct);
+
+            console.log("requesting token");
+            client.requestToken(email).then((token) => {
+              // use token to get a key
+              client.requestKey(token, timestamp).then((key) => {
+                let plain = client.decrypt(key, ct);
+                console.log("decrypted plaintext: ", plain);
+              });
+            });
+          });
+        })
+        .catch((err) => console.log("something went wrong:", err));
     </script>
   </body>
 </html>

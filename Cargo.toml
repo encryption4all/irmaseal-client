@@ -1,7 +1,7 @@
 [package]
-name = "irmaseal-js"
+name = "irmaseal-wasm-bindings"
 version = "0.1.0"
-authors = ["Bas Westerbaan <bas@westerbaan.name>"]
+authors = ["Bas Westerbaan <bas@westerbaan.name>", "Leon Botros <l.botros@cs.ru.nl>"]
 edition = "2018"
 
 [lib]

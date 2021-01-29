@@ -1,6 +1,6 @@
 /*
  * ATTENTION: The "eval" devtool has been used (maybe by default in mode: "development").
- * This devtool is not neither made for production nor for readable output files.
+ * This devtool is neither made for production nor for readable output files.
  * It uses "eval()" calls to create a separate source file in the browser devtools.
  * If you are trying to read the output file, select a different devtool (https://webpack.js.org/configuration/devtool/)
  * or disable the default devtool with "devtool: false".
@@ -20,28 +20,17 @@ return /******/ (() => { // webpackBootstrap
 /******/ 	var __webpack_modules__ = ({
 
 /***/ "./index.js":
-/*!******************!*
+/*!******************!*\
   !*** ./index.js ***!
   \******************/
 /***/ ((module, __unused_webpack_exports, __webpack_require__) => {
 
-eval("const Client = __webpack_require__(/*! ./irmaseal */ \"./irmaseal.js\").default;\nmodule.exports = { Client: Client };\n\n\n//# sourceURL=webpack://irmaseal/./index.js?");
-
-/***/ }),
-
-/***/ "./irmaseal.js":
-/*!*********************!*
-  !*** ./irmaseal.js ***!
-  \*********************/
-/***/ ((__unused_webpack_module, __webpack_exports__, __webpack_require__) => {
-
-"use strict";
-eval("__webpack_require__.r(__webpack_exports__);\n/* harmony export */ __webpack_require__.d(__webpack_exports__, {\n/* harmony export */   \"default\": () => /* binding */ Client\n/* harmony export */ });\nconst irmaFrontend = __webpack_require__(/*! @privacybydesign/irma-frontend */ \"./node_modules/@privacybydesign/irma-frontend/dist/irma.js\");\n\nclass Client {\n  // Don't use the constructor -- use Client.build().\n  constructor(url, params, module) {\n    this.url = url;\n    this.params = params;\n    this.module = module;\n  }\n\n  // Creates a new client for the irmaseal-pkg with the given url.\n  static async build(url) {\n    let module = await __webpack_require__.e(/*! import() */ \"pkg_index_js\").then(__webpack_require__.bind(__webpack_require__, /*! ./pkg */ \"./pkg/index.js\"));\n    let resp = await fetch(url + \"/v1/parameters\");\n    let params = await resp.text();\n    let client = new Client(url, params, module);\n    return client;\n  }\n\n  // Returns the timestamp from a ciphertext.\n  extractTimestamp(ciphertext) {\n    return this.module.extract_timestamp(ciphertext);\n  }\n\n  encrypt(whom, what) {\n    // We JSON encode the what object, pad it to a multiple of 2^9 bytes\n    // with size prefixed and then pass it to irmaseal.\n    let encoder = new TextEncoder();\n    let bWhat = encoder.encode(JSON.stringify(what));\n    let l = bWhat.byteLength;\n    if (l >= 65536 - 2) {\n      throw new Error(\"Too large to encrypt\");\n    }\n    const paddingBits = 9; // pad to 2^9 - 2 = 510\n    let paddedLength = (((l + 1) >> paddingBits) + 1) << paddingBits;\n    let buf = new ArrayBuffer(paddedLength);\n    let buf8 = new Uint8Array(buf);\n    buf8[0] = l >> 8;\n    buf8[1] = l & 255;\n    new Uint8Array(buf, 2).set(new Uint8Array(bWhat));\n    return this.module.encrypt(\n      \"pbdf.sidn-pbdf.email.email\",\n      whom,\n      new Uint8Array(buf),\n      this.params\n    );\n  }\n\n  decrypt(key, ct) {\n    let buf = this.module.decrypt(ct, key);\n    let len = (buf[0] << 8) | buf[1];\n    let decoder = new TextDecoder();\n    return JSON.parse(decoder.decode(buf.slice(2, 2 + len)));\n  }\n\n  // 1) Start IRMA session, resulting in a token\n  requestToken(whose) {\n    return irmaFrontend\n      .newPopup({\n        session: {\n          url: this.url,\n          start: {\n            url: (o) => `${o.url}/v1/request`,\n            method: \"POST\",\n            headers: { \"Content-Type\": \"application/json\" },\n            body: JSON.stringify({\n              attribute: {\n                type: \"pbdf.sidn-pbdf.email.email\",\n                value: whose,\n              },\n            }),\n          },\n          mapping: {\n            sessionPtr: (r) => JSON.parse(r.qr),\n            sessionToken: (r) => r.token,\n          },\n          result: false,\n        },\n      })\n      .start()\n      .then((map) => map.sessionToken);\n  }\n\n  // 2) Acquire a key per timestamp using said token\n  requestKey(token, timestamp) {\n    let url = this.url;\n    return new Promise(function (resolve, reject) {\n      fetch(`${url}/v1/request/${token}/${timestamp.toString()}`)\n        .then((resp) => {\n          return resp.status !== 200\n            ? reject(new Error(\"not ok\"))\n            : resp.json();\n        })\n        .then((json) => {\n          return json.status !== \"DONE_VALID\"\n            ? reject(new Error(\"not valid\"))\n            : resolve(json.key);\n        });\n    });\n  }\n}\n\n\n//# sourceURL=webpack://irmaseal/./irmaseal.js?");
+eval("const irmaFrontend = __webpack_require__(/*! @privacybydesign/irma-frontend */ \"./node_modules/@privacybydesign/irma-frontend/dist/irma.js\");\n\nmodule.exports = {\n  Client: class Client {\n    // Don't use the constructor -- use Client.build().\n    constructor(url, params, module) {\n      this.url = url;\n      this.params = params;\n      this.module = module;\n    }\n\n    // Creates a new client for the irmaseal-pkg with the given url.\n    static build(url) {\n      return new Promise(function (resolve, reject) {\n        __webpack_require__.e(/*! import() */ \"pkg_index_js\").then(__webpack_require__.bind(__webpack_require__, /*! ./pkg */ \"./pkg/index.js\"))\n          .then((module) => {\n            fetch(url + \"/v1/parameters\")\n              .then((resp) => resp.text())\n              .then((params) => resolve(new Client(url, params, module)));\n          })\n          .catch((err) => reject(err));\n      });\n    }\n\n    // Returns the timestamp from a ciphertext.\n    extractTimestamp(ciphertext) {\n      return this.module.extract_timestamp(ciphertext);\n    }\n\n    encrypt(whom, what) {\n      // We JSON encode the what object, pad it to a multiple of 2^9 bytes\n      // with size prefixed and then pass it to irmaseal.\n      let encoder = new TextEncoder();\n      let bWhat = encoder.encode(JSON.stringify(what));\n      let l = bWhat.byteLength;\n      if (l >= 65536 - 2) {\n        throw new Error(\"Too large to encrypt\");\n      }\n      const paddingBits = 9; // pad to 2^9 - 2 = 510\n      let paddedLength = (((l + 1) >> paddingBits) + 1) << paddingBits;\n      let buf = new ArrayBuffer(paddedLength);\n      let buf8 = new Uint8Array(buf);\n      buf8[0] = l >> 8;\n      buf8[1] = l & 255;\n      new Uint8Array(buf, 2).set(new Uint8Array(bWhat));\n      return this.module.encrypt(\n        \"pbdf.sidn-pbdf.email.email\",\n        whom,\n        new Uint8Array(buf),\n        this.params\n      );\n    }\n\n    decrypt(key, ct) {\n      let buf = this.module.decrypt(ct, key);\n      let len = (buf[0] << 8) | buf[1];\n      let decoder = new TextDecoder();\n      return JSON.parse(decoder.decode(buf.slice(2, 2 + len)));\n    }\n\n    // 1) Start IRMA session, resulting in a token\n    requestToken(whose) {\n      return irmaFrontend\n        .newPopup({\n          session: {\n            url: this.url,\n            start: {\n              url: (o) => `${o.url}/v1/request`,\n              method: \"POST\",\n              headers: { \"Content-Type\": \"application/json\" },\n              body: JSON.stringify({\n                attribute: {\n                  type: \"pbdf.sidn-pbdf.email.email\",\n                  value: whose,\n                },\n              }),\n            },\n            mapping: {\n              sessionPtr: (r) => JSON.parse(r.qr),\n              sessionToken: (r) => r.token,\n            },\n            result: false,\n          },\n        })\n        .start()\n        .then((map) => map.sessionToken);\n    }\n\n    // 2) Acquire a key per timestamp using said token\n    requestKey(token, timestamp) {\n      let url = this.url;\n      return new Promise(function (resolve, reject) {\n        fetch(`${url}/v1/request/${token}/${timestamp.toString()}`)\n          .then((resp) => {\n            return resp.status !== 200\n              ? reject(new Error(\"not ok\"))\n              : resp.json();\n          })\n          .then((json) => {\n            return json.status !== \"DONE_VALID\"\n              ? reject(new Error(\"not valid\"))\n              : resolve(json.key);\n          });\n      });\n    }\n  },\n};\n\n\n//# sourceURL=webpack://irmaseal/./index.js?");
 
 /***/ }),
 
 /***/ "./node_modules/@privacybydesign/irma-frontend/dist/irma.js":
-/*!******************************************************************!*
+/*!******************************************************************!*\
   !*** ./node_modules/@privacybydesign/irma-frontend/dist/irma.js ***!
   \******************************************************************/
 /***/ ((module) => {
@@ -119,18 +108,6 @@ eval("!function(t,e){ true?module.exports=e():0}(window,(function(){return funct
 /******/ 		};
 /******/ 	})();
 /******/ 	
-/******/ 	/* webpack/runtime/global */
-/******/ 	(() => {
-/******/ 		__webpack_require__.g = (function() {
-/******/ 			if (typeof globalThis === 'object') return globalThis;
-/******/ 			try {
-/******/ 				return this || new Function('return this')();
-/******/ 			} catch (e) {
-/******/ 				if (typeof window === 'object') return window;
-/******/ 			}
-/******/ 		})();
-/******/ 	})();
-/******/ 	
 /******/ 	/* webpack/runtime/harmony module decorator */
 /******/ 	(() => {
 /******/ 		__webpack_require__.hmd = (module) => {
@@ -156,7 +133,7 @@ eval("!function(t,e){ true?module.exports=e():0}(window,(function(){return funct
 /******/ 		var inProgress = {};
 /******/ 		var dataWebpackPrefix = "irmaseal:";
 /******/ 		// loadScript function to load a script via script tag
-/******/ 		__webpack_require__.l = (url, done, key) => {
+/******/ 		__webpack_require__.l = (url, done, key, chunkId) => {
 /******/ 			if(inProgress[url]) { inProgress[url].push(done); return; }
 /******/ 			var script, needAttach;
 /******/ 			if(key !== undefined) {
@@ -210,22 +187,7 @@ eval("!function(t,e){ true?module.exports=e():0}(window,(function(){return funct
 /******/ 	
 /******/ 	/* webpack/runtime/publicPath */
 /******/ 	(() => {
-/******/ 		var scriptUrl;
-/******/ 		if (__webpack_require__.g.importScripts) scriptUrl = __webpack_require__.g.location + "";
-/******/ 		var document = __webpack_require__.g.document;
-/******/ 		if (!scriptUrl && document) {
-/******/ 			if (document.currentScript)
-/******/ 				scriptUrl = document.currentScript.src
-/******/ 			if (!scriptUrl) {
-/******/ 				var scripts = document.getElementsByTagName("script");
-/******/ 				if(scripts.length) scriptUrl = scripts[scripts.length - 1].src
-/******/ 			}
-/******/ 		}
-/******/ 		// When supporting browsers where an automatic publicPath is not supported you must specify an output.publicPath manually via configuration
-/******/ 		// or pass an empty string ("") and set the __webpack_public_path__ variable from your code to use your own logic.
-/******/ 		if (!scriptUrl) throw new Error("Automatic publicPath is not supported in this browser");
-/******/ 		scriptUrl = scriptUrl.replace(/#.*$/, "").replace(/\?.*$/, "").replace(/\/[^\/]+$/, "/");
-/******/ 		__webpack_require__.p = scriptUrl;
+/******/ 		__webpack_require__.p = "";
 /******/ 	})();
 /******/ 	
 /******/ 	/* webpack/runtime/jsonp chunk loading */
@@ -275,7 +237,7 @@ eval("!function(t,e){ true?module.exports=e():0}(window,(function(){return funct
 /******/ 									}
 /******/ 								}
 /******/ 							};
-/******/ 							__webpack_require__.l(url, loadingEnded, "chunk-" + chunkId);
+/******/ 							__webpack_require__.l(url, loadingEnded, "chunk-" + chunkId, chunkId);
 /******/ 						} else installedChunks[chunkId] = 0;
 /******/ 					}
 /******/ 				}
@@ -292,7 +254,7 @@ eval("!function(t,e){ true?module.exports=e():0}(window,(function(){return funct
 /******/ 		// no deferred startup
 /******/ 		
 /******/ 		// install a JSONP callback for chunk loading
-/******/ 		var webpackJsonpCallback = (data) => {
+/******/ 		var webpackJsonpCallback = (parentChunkLoadingFunction, data) => {
 /******/ 			var [chunkIds, moreModules, runtime] = data;
 /******/ 			// add "moreModules" to the modules object,
 /******/ 			// then flag all "chunkIds" as loaded and fire callback
@@ -310,7 +272,7 @@ eval("!function(t,e){ true?module.exports=e():0}(window,(function(){return funct
 /******/ 				}
 /******/ 			}
 /******/ 			if(runtime) runtime(__webpack_require__);
-/******/ 			parentChunkLoadingFunction(data);
+/******/ 			if(parentChunkLoadingFunction) parentChunkLoadingFunction(data);
 /******/ 			while(resolves.length) {
 /******/ 				resolves.shift()();
 /******/ 			}
@@ -318,8 +280,10 @@ eval("!function(t,e){ true?module.exports=e():0}(window,(function(){return funct
 /******/ 		}
 /******/ 		
 /******/ 		var chunkLoadingGlobal = self["webpackChunkirmaseal"] = self["webpackChunkirmaseal"] || [];
-/******/ 		var parentChunkLoadingFunction = chunkLoadingGlobal.push.bind(chunkLoadingGlobal);
-/******/ 		chunkLoadingGlobal.push = webpackJsonpCallback;
+/******/ 		chunkLoadingGlobal.forEach(webpackJsonpCallback.bind(null, 0));
+/******/ 		chunkLoadingGlobal.push = webpackJsonpCallback.bind(null, chunkLoadingGlobal.push.bind(chunkLoadingGlobal));
+/******/ 		
+/******/ 		// no deferred startup
 /******/ 	})();
 /******/ 	
 /******/ 	/* webpack/runtime/wasm chunk loading */
@@ -350,6 +314,8 @@ eval("!function(t,e){ true?module.exports=e():0}(window,(function(){return funct
 /******/ 		var wasmImportedFuncCache18;
 /******/ 		var wasmImportedFuncCache19;
 /******/ 		var wasmImportedFuncCache20;
+/******/ 		var wasmImportedFuncCache21;
+/******/ 		var wasmImportedFuncCache22;
 /******/ 		var wasmImportObjects = {
 /******/ 			"./pkg/index_bg.wasm": function() {
 /******/ 				return {
@@ -358,85 +324,93 @@ eval("!function(t,e){ true?module.exports=e():0}(window,(function(){return funct
 /******/ 							if(wasmImportedFuncCache0 === undefined) wasmImportedFuncCache0 = __webpack_require__.c["./pkg/index_bg.js"].exports;
 /******/ 							return wasmImportedFuncCache0["__wbindgen_number_new"](p0f64);
 /******/ 						},
-/******/ 						"__wbg_new_94a7dfa9529ec6e8": function(p0i32,p1i32) {
+/******/ 						"__wbindgen_object_drop_ref": function(p0i32) {
 /******/ 							if(wasmImportedFuncCache1 === undefined) wasmImportedFuncCache1 = __webpack_require__.c["./pkg/index_bg.js"].exports;
-/******/ 							return wasmImportedFuncCache1["__wbg_new_94a7dfa9529ec6e8"](p0i32,p1i32);
+/******/ 							return wasmImportedFuncCache1["__wbindgen_object_drop_ref"](p0i32);
 /******/ 						},
-/******/ 						"__wbg_now_ba10664caf7c834a": function() {
+/******/ 						"__wbg_randomFillSync_d2ba53160aec6aba": function(p0i32,p1i32,p2i32) {
 /******/ 							if(wasmImportedFuncCache2 === undefined) wasmImportedFuncCache2 = __webpack_require__.c["./pkg/index_bg.js"].exports;
-/******/ 							return wasmImportedFuncCache2["__wbg_now_ba10664caf7c834a"]();
+/******/ 							return wasmImportedFuncCache2["__wbg_randomFillSync_d2ba53160aec6aba"](p0i32,p1i32,p2i32);
 /******/ 						},
-/******/ 						"__wbg_new_c6c0228e6d22a2f9": function(p0i32) {
+/******/ 						"__wbg_getRandomValues_e57c9b75ddead065": function(p0i32,p1i32) {
 /******/ 							if(wasmImportedFuncCache3 === undefined) wasmImportedFuncCache3 = __webpack_require__.c["./pkg/index_bg.js"].exports;
-/******/ 							return wasmImportedFuncCache3["__wbg_new_c6c0228e6d22a2f9"](p0i32);
+/******/ 							return wasmImportedFuncCache3["__wbg_getRandomValues_e57c9b75ddead065"](p0i32,p1i32);
 /******/ 						},
-/******/ 						"__wbg_newwithbyteoffsetandlength_4c51342f87299c5a": function(p0i32,p1i32,p2i32) {
+/******/ 						"__wbg_self_86b4b13392c7af56": function() {
 /******/ 							if(wasmImportedFuncCache4 === undefined) wasmImportedFuncCache4 = __webpack_require__.c["./pkg/index_bg.js"].exports;
-/******/ 							return wasmImportedFuncCache4["__wbg_newwithbyteoffsetandlength_4c51342f87299c5a"](p0i32,p1i32,p2i32);
+/******/ 							return wasmImportedFuncCache4["__wbg_self_86b4b13392c7af56"]();
 /******/ 						},
-/******/ 						"__wbg_length_c645e7c02233b440": function(p0i32) {
+/******/ 						"__wbg_require_f5521a5b85ad2542": function(p0i32,p1i32,p2i32) {
 /******/ 							if(wasmImportedFuncCache5 === undefined) wasmImportedFuncCache5 = __webpack_require__.c["./pkg/index_bg.js"].exports;
-/******/ 							return wasmImportedFuncCache5["__wbg_length_c645e7c02233b440"](p0i32);
+/******/ 							return wasmImportedFuncCache5["__wbg_require_f5521a5b85ad2542"](p0i32,p1i32,p2i32);
 /******/ 						},
-/******/ 						"__wbg_set_b91afac9fd216d99": function(p0i32,p1i32,p2i32) {
+/******/ 						"__wbg_crypto_b8c92eaac23d0d80": function(p0i32) {
 /******/ 							if(wasmImportedFuncCache6 === undefined) wasmImportedFuncCache6 = __webpack_require__.c["./pkg/index_bg.js"].exports;
-/******/ 							return wasmImportedFuncCache6["__wbg_set_b91afac9fd216d99"](p0i32,p1i32,p2i32);
+/******/ 							return wasmImportedFuncCache6["__wbg_crypto_b8c92eaac23d0d80"](p0i32);
 /******/ 						},
-/******/ 						"__wbg_buffer_3f12a1c608c6d04e": function(p0i32) {
+/******/ 						"__wbg_msCrypto_9ad6677321a08dd8": function(p0i32) {
 /******/ 							if(wasmImportedFuncCache7 === undefined) wasmImportedFuncCache7 = __webpack_require__.c["./pkg/index_bg.js"].exports;
-/******/ 							return wasmImportedFuncCache7["__wbg_buffer_3f12a1c608c6d04e"](p0i32);
+/******/ 							return wasmImportedFuncCache7["__wbg_msCrypto_9ad6677321a08dd8"](p0i32);
 /******/ 						},
 /******/ 						"__wbindgen_is_undefined": function(p0i32) {
 /******/ 							if(wasmImportedFuncCache8 === undefined) wasmImportedFuncCache8 = __webpack_require__.c["./pkg/index_bg.js"].exports;
 /******/ 							return wasmImportedFuncCache8["__wbindgen_is_undefined"](p0i32);
 /******/ 						},
-/******/ 						"__wbindgen_object_drop_ref": function(p0i32) {
+/******/ 						"__wbg_getRandomValues_dd27e6b0652b3236": function(p0i32) {
 /******/ 							if(wasmImportedFuncCache9 === undefined) wasmImportedFuncCache9 = __webpack_require__.c["./pkg/index_bg.js"].exports;
-/******/ 							return wasmImportedFuncCache9["__wbindgen_object_drop_ref"](p0i32);
+/******/ 							return wasmImportedFuncCache9["__wbg_getRandomValues_dd27e6b0652b3236"](p0i32);
 /******/ 						},
-/******/ 						"__wbg_self_1c83eb4471d9eb9b": function() {
+/******/ 						"__wbg_static_accessor_MODULE_452b4680e8614c81": function() {
 /******/ 							if(wasmImportedFuncCache10 === undefined) wasmImportedFuncCache10 = __webpack_require__.c["./pkg/index_bg.js"].exports;
-/******/ 							return wasmImportedFuncCache10["__wbg_self_1c83eb4471d9eb9b"]();
+/******/ 							return wasmImportedFuncCache10["__wbg_static_accessor_MODULE_452b4680e8614c81"]();
 /******/ 						},
-/******/ 						"__wbg_msCrypto_679be765111ba775": function(p0i32) {
+/******/ 						"__wbg_new_f59cbefd64f2876f": function(p0i32,p1i32) {
 /******/ 							if(wasmImportedFuncCache11 === undefined) wasmImportedFuncCache11 = __webpack_require__.c["./pkg/index_bg.js"].exports;
-/******/ 							return wasmImportedFuncCache11["__wbg_msCrypto_679be765111ba775"](p0i32);
+/******/ 							return wasmImportedFuncCache11["__wbg_new_f59cbefd64f2876f"](p0i32,p1i32);
 /******/ 						},
-/******/ 						"__wbg_crypto_c12f14e810edcaa2": function(p0i32) {
+/******/ 						"__wbg_now_c110383288150953": function() {
 /******/ 							if(wasmImportedFuncCache12 === undefined) wasmImportedFuncCache12 = __webpack_require__.c["./pkg/index_bg.js"].exports;
-/******/ 							return wasmImportedFuncCache12["__wbg_crypto_c12f14e810edcaa2"](p0i32);
+/******/ 							return wasmImportedFuncCache12["__wbg_now_c110383288150953"]();
 /******/ 						},
-/******/ 						"__wbg_getRandomValues_05a60bf171bfc2be": function(p0i32) {
+/******/ 						"__wbg_buffer_bc64154385c04ac4": function(p0i32) {
 /******/ 							if(wasmImportedFuncCache13 === undefined) wasmImportedFuncCache13 = __webpack_require__.c["./pkg/index_bg.js"].exports;
-/******/ 							return wasmImportedFuncCache13["__wbg_getRandomValues_05a60bf171bfc2be"](p0i32);
+/******/ 							return wasmImportedFuncCache13["__wbg_buffer_bc64154385c04ac4"](p0i32);
 /******/ 						},
-/******/ 						"__wbg_getRandomValues_3ac1b33c90b52596": function(p0i32,p1i32,p2i32) {
+/******/ 						"__wbg_newwithbyteoffsetandlength_3c8748473807c7cf": function(p0i32,p1i32,p2i32) {
 /******/ 							if(wasmImportedFuncCache14 === undefined) wasmImportedFuncCache14 = __webpack_require__.c["./pkg/index_bg.js"].exports;
-/******/ 							return wasmImportedFuncCache14["__wbg_getRandomValues_3ac1b33c90b52596"](p0i32,p1i32,p2i32);
+/******/ 							return wasmImportedFuncCache14["__wbg_newwithbyteoffsetandlength_3c8748473807c7cf"](p0i32,p1i32,p2i32);
 /******/ 						},
-/******/ 						"__wbg_randomFillSync_6f956029658662ec": function(p0i32,p1i32,p2i32) {
+/******/ 						"__wbg_new_22a33711cf65b661": function(p0i32) {
 /******/ 							if(wasmImportedFuncCache15 === undefined) wasmImportedFuncCache15 = __webpack_require__.c["./pkg/index_bg.js"].exports;
-/******/ 							return wasmImportedFuncCache15["__wbg_randomFillSync_6f956029658662ec"](p0i32,p1i32,p2i32);
+/******/ 							return wasmImportedFuncCache15["__wbg_new_22a33711cf65b661"](p0i32);
 /******/ 						},
-/******/ 						"__wbg_static_accessor_MODULE_abf5ae284bffdf45": function() {
+/******/ 						"__wbg_set_b29de3f25280c6ec": function(p0i32,p1i32,p2i32) {
 /******/ 							if(wasmImportedFuncCache16 === undefined) wasmImportedFuncCache16 = __webpack_require__.c["./pkg/index_bg.js"].exports;
-/******/ 							return wasmImportedFuncCache16["__wbg_static_accessor_MODULE_abf5ae284bffdf45"]();
+/******/ 							return wasmImportedFuncCache16["__wbg_set_b29de3f25280c6ec"](p0i32,p1i32,p2i32);
 /******/ 						},
-/******/ 						"__wbg_require_5b2b5b594d809d9f": function(p0i32,p1i32,p2i32) {
+/******/ 						"__wbg_length_e9f6f145de2fede5": function(p0i32) {
 /******/ 							if(wasmImportedFuncCache17 === undefined) wasmImportedFuncCache17 = __webpack_require__.c["./pkg/index_bg.js"].exports;
-/******/ 							return wasmImportedFuncCache17["__wbg_require_5b2b5b594d809d9f"](p0i32,p1i32,p2i32);
+/******/ 							return wasmImportedFuncCache17["__wbg_length_e9f6f145de2fede5"](p0i32);
+/******/ 						},
+/******/ 						"__wbg_newwithlength_48451d71403bfede": function(p0i32) {
+/******/ 							if(wasmImportedFuncCache18 === undefined) wasmImportedFuncCache18 = __webpack_require__.c["./pkg/index_bg.js"].exports;
+/******/ 							return wasmImportedFuncCache18["__wbg_newwithlength_48451d71403bfede"](p0i32);
+/******/ 						},
+/******/ 						"__wbg_subarray_6b2dd31c84ee881f": function(p0i32,p1i32,p2i32) {
+/******/ 							if(wasmImportedFuncCache19 === undefined) wasmImportedFuncCache19 = __webpack_require__.c["./pkg/index_bg.js"].exports;
+/******/ 							return wasmImportedFuncCache19["__wbg_subarray_6b2dd31c84ee881f"](p0i32,p1i32,p2i32);
 /******/ 						},
 /******/ 						"__wbindgen_throw": function(p0i32,p1i32) {
-/******/ 							if(wasmImportedFuncCache18 === undefined) wasmImportedFuncCache18 = __webpack_require__.c["./pkg/index_bg.js"].exports;
-/******/ 							return wasmImportedFuncCache18["__wbindgen_throw"](p0i32,p1i32);
+/******/ 							if(wasmImportedFuncCache20 === undefined) wasmImportedFuncCache20 = __webpack_require__.c["./pkg/index_bg.js"].exports;
+/******/ 							return wasmImportedFuncCache20["__wbindgen_throw"](p0i32,p1i32);
 /******/ 						},
 /******/ 						"__wbindgen_rethrow": function(p0i32) {
-/******/ 							if(wasmImportedFuncCache19 === undefined) wasmImportedFuncCache19 = __webpack_require__.c["./pkg/index_bg.js"].exports;
-/******/ 							return wasmImportedFuncCache19["__wbindgen_rethrow"](p0i32);
+/******/ 							if(wasmImportedFuncCache21 === undefined) wasmImportedFuncCache21 = __webpack_require__.c["./pkg/index_bg.js"].exports;
+/******/ 							return wasmImportedFuncCache21["__wbindgen_rethrow"](p0i32);
 /******/ 						},
 /******/ 						"__wbindgen_memory": function() {
-/******/ 							if(wasmImportedFuncCache20 === undefined) wasmImportedFuncCache20 = __webpack_require__.c["./pkg/index_bg.js"].exports;
-/******/ 							return wasmImportedFuncCache20["__wbindgen_memory"]();
+/******/ 							if(wasmImportedFuncCache22 === undefined) wasmImportedFuncCache22 = __webpack_require__.c["./pkg/index_bg.js"].exports;
+/******/ 							return wasmImportedFuncCache22["__wbindgen_memory"]();
 /******/ 						}
 /******/ 					}
 /******/ 				};
@@ -465,7 +439,7 @@ eval("!function(t,e){ true?module.exports=e():0}(window,(function(){return funct
 /******/ 					promises.push(installedWasmModuleData);
 /******/ 				else {
 /******/ 					var importObject = wasmImportObjects[wasmModuleId]();
-/******/ 					var req = fetch(__webpack_require__.p + "" + {"pkg_index_js":{"./pkg/index_bg.wasm":"82d33e3874d149ad1bd6"}}[chunkId][wasmModuleId] + ".module.wasm");
+/******/ 					var req = fetch(__webpack_require__.p + "" + {"pkg_index_js":{"./pkg/index_bg.wasm":"3b4fdf4ade732d9f29a3"}}[chunkId][wasmModuleId] + ".module.wasm");
 /******/ 					var promise;
 /******/ 					if(importObject instanceof Promise && typeof WebAssembly.compileStreaming === 'function') {
 /******/ 						promise = Promise.all([WebAssembly.compileStreaming(req), importObject]).then(function(items) {

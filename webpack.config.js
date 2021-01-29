@@ -14,19 +14,20 @@ module.exports = {
     filename: "irmaseal.js",
     library: "irmaseal",
     libraryTarget: "umd",
+    publicPath: "",
   },
   experiments: {
-    syncWebAssembly: true,
-    topLevelAwait: true,
+    syncWebAssembly: true
   },
   devServer: {
     contentBase: dist,
   },
   plugins: [
     new CopyPlugin({ patterns: [{ from: "static" }] }),
-      new WasmPackPlugin({
-        crateDirectory: path.resolve(__dirname, "."),
-        extraArgs: "--no-typescript",
-      }),
+    new WasmPackPlugin({
+      crateDirectory: path.resolve(__dirname, "."),
+      extraArgs: "--no-typescript",
+      forceMode: "production"
+    }),
   ],
 };
