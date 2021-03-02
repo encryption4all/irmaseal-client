@@ -1,5 +1,5 @@
 {
-  "name": "irmaseal-client",
+  "name": "@e4a/irmaseal-client",
   "version": "0.0.1",
   "main": "src/index.js",
   "types": "src/index.d.ts",
