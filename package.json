@@ -1,6 +1,9 @@
 {
   "name": "irmaseal-client",
-  "files": "index.js",
+  "version": "0.0.1",
+  "main": "src/index.js",
+  "types": "src/index.d.ts",
+  "license": "MIT",
   "repository": {
     "type": "git",
     "url": "https://github.com/encryption4all/irmaseal-client.git"
@@ -9,6 +12,7 @@
     "clean-webpack-plugin": "^3.0.0",
     "copy-webpack-plugin": "^7.0.0",
     "prettier": "^2.2.1",
+    "typescript": "^4.2.2",
     "webpack": "^5.18.0",
     "webpack-cli": "^4.4.0",
     "webpack-dev-server": "^3.11.2"
@@ -19,11 +23,12 @@
   },
   "scripts": {
     "build": "webpack",
-    "start": "webpack serve"
+    "start": "webpack serve",
+    "types": "npx typescript src/index.js --declaration --allowJs --emitDeclarationOnly --outdir src --skipLibCheck"
   },
   "prettier": {
     "trailingComma": "es5",
-    "tabWidth": 4,
+    "tabWidth": 2,
     "semi": false,
     "singleQuote": true
   }
