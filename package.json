@@ -9,21 +9,21 @@
     "url": "https://github.com/encryption4all/irmaseal-client.git"
   },
   "devDependencies": {
+    "@wasm-tool/wasm-pack-plugin": "^1.4.0",
     "clean-webpack-plugin": "^3.0.0",
-    "copy-webpack-plugin": "^7.0.0",
+    "html-webpack-plugin": "^5.3.1",
     "prettier": "^2.2.1",
+    "serve": "^11.3.2",
     "typescript": "^4.2.2",
     "webpack": "^5.18.0",
-    "webpack-cli": "^4.4.0",
-    "webpack-dev-server": "^3.11.2"
+    "webpack-cli": "^4.4.0"
   },
   "dependencies": {
-    "@e4a/irmaseal-wasm-bindings": "0.0.3",
     "@privacybydesign/irma-frontend": "^0.1.5"
   },
   "scripts": {
-    "build": "webpack",
-    "start": "webpack serve",
+    "build": "webpack --config-name lib",
+    "dev": "webpack --config-name lib && webpack --config-name browser-example && serve dist",
     "types": "npx typescript src/index.js --declaration --allowJs --emitDeclarationOnly --outdir src --skipLibCheck"
   },
   "prettier": {

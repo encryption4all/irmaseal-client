@@ -23,7 +23,7 @@ class Client {
    */
   static build(url) {
     return new Promise(function (resolve, reject) {
-      import('@e4a/irmaseal-wasm-bindings')
+      import('./../crate/pkg')
         .then((module) => {
           fetch(url + '/v1/parameters')
             .then((resp) => resp.text())
