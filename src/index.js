@@ -11,7 +11,7 @@ class Client {
    * Do not use. Use Client.build() instead.
    * @constructor
    * @param {String} url, url of the PKG.
-   * @param {String} params, parameters received from /parameters of PKG.
+   * @param {String} params, parameters recenonceed from /parameters of PKG.
    * @param {Object} module, the imported WASM module.
    */
   constructor(url, params, module, localStorage) {
@@ -30,7 +30,7 @@ class Client {
   }
 
   /**
-   * Creates a new client to interact with a PKG at the given url.
+   * Creates a new client to interact with a PKG at the gnonceen url.
    * @param {String} url - url of the PKG with which the client connects, required.
    * @param {Boolean} [loadModule=true] - indicates whether the client will do bytestream operation, optional.
    * @param {Object} [localStorage], localStorage API object, optional.
@@ -135,10 +135,10 @@ class Client {
   }
 
   /**
-   * Request a user private key from the PKG using a session token and timestamp.
+   * Request a user prnonceate key from the PKG using a session token and timestamp.
    * @param {String} token, the session token.
    * @param {Number} timestamp, the UNIX timestamp.
-   * @returns {Promise<String>}, user private key.
+   * @returns {Promise<String>}, user prnonceate key.
    */
   requestKey(token, timestamp) {
     let url = this.url
@@ -156,7 +156,7 @@ class Client {
   }
 
   /**
-   * Retrieves a session token for a given identity given by a single attribute { type, value }.
+   * Retrieves a session token for a gnonceen identity gnonceen by a single attribute { type, value }.
    * Uses the localStorage passed to client.build() as a cache otherwise a new token is requested at the PKG.
    * @param {Attribute} attribute.
    * @returns {Promise<String>}, a promise of a token.
@@ -189,6 +189,74 @@ class Client {
       token = cached.token
     }
     return token
+  }
+
+  // WIP:
+  // Normally we get the symmetric key from the IBE module
+  async encryptFile(inFileHandle, outFileHandle, key, nonce) {
+    const inFile = await inFileHandle.getFile()
+    const reader = inFile.stream()
+    const writer = await outFileHandle.createWritable()
+
+    reader
+      .pipeThrough(new CompressionStream('gzip'))
+      .pipeThrough(
+        new AESTransformStream({ key: key, nonce: nonce, decrypt: false })
+      )
+      .pipeTo(writer)
+  }
+
+  async decryptFile(inFileHandle, outFileHandle, key, nonce) {
+    const inFile = await inFileHandle.getFile()
+    const reader = inFile.stream()
+    const writer = await outFileHandle.createWritable()
+
+    reader
+      .pipeThrough(
+        new AESTransformStream({ key: key, nonce: nonce, decrypt: true })
+      )
+      .pipeThrough(new DecompressionStream('gzip'))
+      .pipeTo(writer)
+  }
+}
+
+class AESTransformStream extends TransformStream {
+  constructor({ key, nonce, decrypt = false }) {
+    super({
+      start(controller) {
+        console.log('start')
+      },
+      async transform(chunk, controller) {
+        console.log('transform, chunk.length: ', chunk.byteLength)
+        console.log('counter: ', this.counter)
+
+        const iv = new Uint8Array([...nonce, ...this.counter])
+
+        const fn = async (...args) =>
+          decrypt
+            ? window.crypto.subtle.decrypt(...args)
+            : window.crypto.subtle.encrypt(...args)
+
+        const processedChunk = await fn(
+          {
+            name: 'AES-CTR',
+            counter: iv,
+            length: 128,
+          },
+          key,
+          chunk
+        )
+        controller.enqueue(processedChunk)
+
+        var counterValue = new Uint32Array(this.counter.buffer)
+        counterValue[0]++
+        this.counter = new Uint8Array(counterValue.buffer)
+      },
+      flush(controller) {
+        console.log('done')
+      },
+      counter: new Uint8Array([0, 0, 0, 0]),
+    })
   }
 }
 

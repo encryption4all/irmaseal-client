@@ -23,7 +23,7 @@
   },
   "scripts": {
     "build": "webpack --config-name lib",
-    "dev": "webpack --config-name lib && webpack --config-name browser-example && serve dist",
+    "dev": "webpack --config-name lib && webpack --config-name examples --watch & serve dist",
     "types": "tsc src/index.js --declaration --allowJs --emitDeclarationOnly --outdir src --skipLibCheck"
   },
   "prettier": {

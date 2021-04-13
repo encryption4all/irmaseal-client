@@ -30,9 +30,9 @@ var libConfig = {
 }
 
 var exampleConfig = {
-  name: 'browser-example',
+  name: 'examples',
   mode: webpackMode,
-  entry: './examples/browser.js',
+  entry: { enc: './examples/browser.js', file: './examples/file.js' },
   output: {
     path: dist,
     filename: 'example_[name].js',
@@ -44,7 +44,12 @@ var exampleConfig = {
     new CleanWebpackPlugin({
       cleanOnceBeforeBuildPatterns: ['example_**'],
     }),
-    new HtmlWebpackPlugin({ filename: 'example_index.html' }),
+    new HtmlWebpackPlugin({ filename: 'example_enc.html', chunks: ['enc'] }),
+    new HtmlWebpackPlugin({
+      filename: 'example_file.html',
+      template: './examples/file.html',
+      chunks: ['file'],
+    }),
   ],
 }
 
