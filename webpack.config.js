@@ -1,14 +1,10 @@
 const path = require('path')
 const { CleanWebpackPlugin } = require('clean-webpack-plugin')
 const HtmlWebpackPlugin = require('html-webpack-plugin')
-const WasmPackPlugin = require('@wasm-tool/wasm-pack-plugin')
 
 const dist = path.resolve(__dirname, 'dist')
-const crate = path.resolve(__dirname, 'crate')
-const crateOut = path.resolve(crate, 'pkg')
 
 const webpackMode = 'development'
-const wasmpackMode = 'production'
 
 var libConfig = {
   name: 'lib',
@@ -29,12 +25,6 @@ var libConfig = {
   plugins: [
     new CleanWebpackPlugin({
       cleanOnceBeforeBuildPatterns: ['**/*', '!example_**'],
-    }),
-    new WasmPackPlugin({
-      crateDirectory: crate,
-      outDir: crateOut,
-      outName: 'index',
-      forceMode: wasmpackMode,
     }),
   ],
 }

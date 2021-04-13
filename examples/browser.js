@@ -9,8 +9,8 @@ window.onload = async () => {
   var email = window.prompt('Encrypt using email: ', '')
 
   let identity = {
-    attributeType: 'pbdf.sidn-pbdf.email.email',
-    attributeValue: email,
+    type: 'pbdf.sidn-pbdf.email.email',
+    value: email,
   }
 
   // The Javascript object to encrypt
@@ -27,7 +27,8 @@ window.onload = async () => {
   console.log(`t_encrypt: ${t_encrypt} ms`)
 
   // Retrieve the timestamp from the identity in the IRMAseal bytestream
-  let timestamp = client.extractTimestamp(ct)
+  let retrievedIdentity = client.extractIdentity(ct)
+  let timestamp = retrievedIdentity.timestamp
 
   // Request a token for for the identity
   console.log('requesting token')
