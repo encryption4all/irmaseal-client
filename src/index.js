@@ -13,7 +13,7 @@ class Client {
    * Do not use. Use Client.build() instead.
    * @constructor
    * @param {String} url, url of the PKG.
-   * @param {String} params, parameters recenonceed from /parameters of PKG.
+   * @param {String} params, parameters received from /parameters of PKG.
    * @param {Object} module, the imported WASM module.
    */
   constructor(url, params, module, localStorage) {
@@ -32,7 +32,7 @@ class Client {
   }
 
   /**
-   * Creates a new client to interact with a PKG at the gnonceen url.
+   * Creates a new client to interact with a PKG at the given url.
    * @param {String} url - url of the PKG with which the client connects, required.
    * @param {Boolean} [loadModule=true] - indicates whether the client will do bytestream operation, optional.
    * @param {Object} [localStorage], localStorage API object, optional.
@@ -84,7 +84,6 @@ class Client {
     buf8[0] = l >> 8
     buf8[1] = l & 255
     new Uint8Array(buf, 2).set(new Uint8Array(objectBytes))
-    console.log(attribute.type, attribute.value, this.params.public_key)
     return this.module.encrypt(
       attribute.type,
       attribute.value,
@@ -137,10 +136,10 @@ class Client {
   }
 
   /**
-   * Request a user prnonceate key from the PKG using a session token and timestamp.
+   * Request a user private key from the PKG using a session token and timestamp.
    * @param {String} token, the session token.
    * @param {Number} timestamp, the UNIX timestamp.
-   * @returns {Promise<String>}, user prnonceate key.
+   * @returns {Promise<String>}, user private key.
    */
   requestKey(token, timestamp) {
     let url = this.url
@@ -158,7 +157,7 @@ class Client {
   }
 
   /**
-   * Retrieves a session token for a gnonceen identity gnonceen by a single attribute { type, value }.
+   * Retrieves a session token for a given identity by a single attribute { type, value }.
    * Uses the localStorage passed to client.build() as a cache otherwise a new token is requested at the PKG.
    * @param {Attribute} attribute.
    * @returns {Promise<String>}, a promise of a token.
