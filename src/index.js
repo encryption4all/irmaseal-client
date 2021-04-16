@@ -1,6 +1,7 @@
 const irmaFrontend = require('@privacybydesign/irma-frontend')
 const { createHMAC, createSHA3, sha3, createSHA256 } = require('hash-wasm')
 const Buffer = require('buffer/').Buffer
+const streams = require('web-streams-polyfill/ponyfill')
 
 /**
  * @typedef {Object} Attribute
@@ -199,7 +200,7 @@ const BLOCKSIZE = 16
 const NONCESIZE = 12
 const COUNTERSIZE = 4 // do not encrypt more than 2^32 blocks = 2^36 bytes = 68GB!!
 
-class SealTransform extends TransformStream {
+class SealTransform extends streams.TransformStream {
   constructor({ secret, nonce, decrypt = false }) {
     super({
       async start(controller) {

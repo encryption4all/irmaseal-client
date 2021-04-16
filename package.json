@@ -25,7 +25,9 @@
     "@e4a/irmaseal-wasm-bindings": "^0.0.5",
     "@privacybydesign/irma-frontend": "^0.1.5",
     "buffer": "^6.0.3",
-    "hash-wasm": "^4.6.0"
+    "hash-wasm": "^4.6.0",
+    "streamsaver": "^2.0.5",
+    "web-streams-polyfill": "^3.0.3"
   },
   "scripts": {
     "build": "webpack --config-name lib",
