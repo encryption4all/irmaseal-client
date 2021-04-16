@@ -3,7 +3,6 @@ const { CleanWebpackPlugin } = require('clean-webpack-plugin')
 const HtmlWebpackPlugin = require('html-webpack-plugin')
 
 const dist = path.resolve(__dirname, 'dist')
-
 const webpackMode = 'development'
 
 var libConfig = {
@@ -11,6 +10,21 @@ var libConfig = {
   mode: webpackMode,
   entry: {
     index: './src/index.js',
+  },
+  module: {
+    rules: [
+      {
+        test: /\.m?js$/,
+        exclude: /(node_modules|bower_components)/,
+        use: {
+          loader: 'babel-loader',
+          options: {
+            presets: ['@babel/preset-env'],
+            plugins: ['@babel/plugin-transform-runtime'],
+          },
+        },
+      },
+    ],
   },
   output: {
     path: dist,
