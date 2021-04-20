@@ -1,52 +1,50 @@
+import 'web-streams-polyfill'
 import { SealTransform } from './../dist/irmaseal-client'
-import streamSaver from 'streamsaver'
+import {
+  createReadableStreamWrapper,
+  createWritableStreamWrapper,
+} from '@mattiasbuelens/web-streams-adapter'
 
-async function decryptFile(inFileHandle, outFileHandle, secret, nonce) {
-  const inFile = await inFileHandle.getFile()
-  const reader = inFile.stream()
-  const writer = await outFileHandle.createWritable()
+import { createWriteStream } from 'streamsaver'
 
-  await reader
+// Wrappers for native stream implementations
+const toReadable = createReadableStreamWrapper(ReadableStream)
+const toWritable = createWritableStreamWrapper(WritableStream)
+
+const secret = window.crypto.getRandomValues(new Uint8Array(32))
+const nonce = window.crypto.getRandomValues(new Uint8Array(12))
+
+const listener = async (event) => {
+  const decrypt = event.srcElement.classList.contains('decrypt')
+  const [inFile] = event.srcElement.files
+
+  // Suggestion for a filename
+  const outFileName = decrypt
+    ? inFile.name.replace('.enc', '')
+    : `${inFile.name}.enc`
+
+  const outStream = createWriteStream(outFileName, {
+    size: inFile.size,
+  })
+
+  const writer = toWritable(outStream)
+  const readableStream = toReadable(inFile.stream())
+
+  const t0 = performance.now()
+
+  await readableStream
     .pipeThrough(
-      new SealTransform({ secret: secret, nonce: nonce, decrypt: true })
+      new SealTransform({ secret: secret, nonce: nonce, decrypt: decrypt })
     )
     .pipeTo(writer)
+
+  const tEncrypt = performance.now() - t0
+
+  console.log(`tEncrypt/Decrypt ${tEncrypt}$ ms`)
+  console.log(`average MB/s: ${inFile.size / (1000 * tEncrypt)}`)
 }
 
 window.onload = async () => {
-  const encButton = document.querySelector('input.encrypt')
-  const decButton = document.querySelector('input.decrypt')
-
-  const secret = window.crypto.getRandomValues(new Uint8Array(32))
-  const nonce = window.crypto.getRandomValues(new Uint8Array(12))
-
-  encButton.addEventListener('change', async () => {
-    const [inFile] = encButton.files
-    console.log(inFile)
-
-    const outFileStream = streamSaver.createWriteStream('out.enc', {
-      size: inFile.size,
-    })
-    const reader = inFile.stream()
-    console.log(reader)
-    const t0 = performance.now()
-
-    reader
-      .pipeThrough(
-        new SealTransform({ secret: secret, nonce: nonce, decrypt: false })
-      )
-      .pipeTo(outFileStream)
-
-    const tEncrypt = performance.now() - t0
-
-    console.log(`tEncrypt ${tEncrypt}$ ms`)
-    console.log(`average MB/s: ${fileSize / (1000 * tEncrypt)}`)
-  })
-
-  decButton.addEventListener('click', async () => {
-    const [fileHandle] = await window.showOpenFilePicker()
-    const outFileHandle = await window.showSaveFilePicker()
-
-    await decryptFile(fileHandle, outFileHandle, secret, nonce)
-  })
+  const buttons = document.querySelectorAll('input')
+  buttons.forEach((btn) => btn.addEventListener('change', listener))
 }

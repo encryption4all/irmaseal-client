@@ -27,7 +27,8 @@
     "buffer": "^6.0.3",
     "hash-wasm": "^4.6.0",
     "streamsaver": "^2.0.5",
-    "web-streams-polyfill": "^3.0.3"
+    "web-streams-polyfill": "^3.0.3",
+    "@mattiasbuelens/web-streams-adapter": "^0.1.0-alpha.5"
   },
   "scripts": {
     "build": "webpack --config-name lib",

@@ -853,6 +853,11 @@
   resolved "https://registry.npmjs.org/@e4a/irmaseal-wasm-bindings/-/irmaseal-wasm-bindings-0.0.5.tgz#6d51e2968f0d4f27dc5697f211d07a1d540579b7"
   integrity sha512-x8coSbXYcJbRjJynoGV9eMPCuXqhjTg/fdMnhfSWfJmDrbtB9TEyO8UFe8FXFKPrt6BglcYJjDx+xrX8ZJgTcg==
 
+"@mattiasbuelens/web-streams-adapter@^0.1.0-alpha.5":
+  version "0.1.0-alpha.5"
+  resolved "https://registry.npmjs.org/@mattiasbuelens/web-streams-adapter/-/web-streams-adapter-0.1.0-alpha.5.tgz#091a6256fdada3d53dc0a70501bcc6f3a46add05"
+  integrity sha512-OIfunNt/fTjIgDtUqXhBYOKtgaxm30ZWkMWegI9iS3xUHy2/A3AXki6/k+z40+BywNMi+spON/jSE0FF9WmUKA==
+
 "@privacybydesign/irma-frontend@^0.1.5":
   version "0.1.5"
   resolved "https://registry.npmjs.org/@privacybydesign/irma-frontend/-/irma-frontend-0.1.5.tgz#1cc8e2d1a539be4baf294025560681b242014e4e"
