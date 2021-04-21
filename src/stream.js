@@ -1,7 +1,15 @@
 const Buffer = require('buffer/').Buffer
-const { createSHA3, sha3 } = require('hash-wasm')
+const { createSHA3 } = require('hash-wasm')
 
+// Sizes in bytes
 const CHUNK_SIZE = 1024 * 1024 // 1 MiB
+
+// Encryption constants
+const KEYSIZE = 32
+const BLOCKSIZE = 16
+const NONCESIZE = 12
+const COUNTERSIZE = 4 // do not encrypt more than 2^32 blocks = 2^36 bytes = 68GB!!
+const TAGSIZE = 32
 
 // Use file or fileHandle or ??
 function makeReadableFileStream(file) {
@@ -21,25 +29,13 @@ function makeReadableFileStream(file) {
   })
 }
 
-// Sizes in bytes
-const KEYSIZE = 32
-const BLOCKSIZE = 16
-const NONCESIZE = 12
-const COUNTERSIZE = 4 // do not encrypt more than 2^32 blocks = 2^36 bytes = 68GB!!
-
-class SealTransform extends TransformStream {
-  constructor({ secret, nonce, decrypt = false }) {
-    super({
+class SealTransform {
+  constructor({ macKey, aesKey, nonce, decrypt = false }) {
+    return {
       async start(controller) {
         console.log('Start processing stream')
-        if (secret.byteLength !== KEYSIZE || nonce.byteLength !== NONCESIZE)
+        if (aesKey.byteLength !== KEYSIZE || nonce.byteLength !== NONCESIZE)
           throw new Error('key or nonce wrong size')
-
-        // (aesKey ||  macKey) = SHA3-512(k)
-        const out = await sha3(secret, 512)
-        const outBytes = Buffer.from(out, 'hex')
-        const aesKey = new Uint8Array(outBytes.buffer, 0, KEYSIZE)
-        const macKey = new Uint8Array(outBytes.buffer, KEYSIZE, KEYSIZE)
 
         const keySpec = {
           name: 'AES-CTR',
@@ -57,13 +53,20 @@ class SealTransform extends TransformStream {
         this.nonce = new Uint8Array(nonce).reverse()
         this.counter = Uint8Array.from('0'.repeat(COUNTERSIZE))
 
-        // Start an incremental HMAC with SHA-3
-        // which is just H(k || m)
+        // Start an incremental HMAC with SHA-3 which is just H(k || m)
         this.hash = await createSHA3(256)
         this.hash.update(macKey)
+
+        this.tag = null
       },
       async transform(chunk, controller) {
         const blocks = Math.ceil(chunk.byteLength / BLOCKSIZE)
+        const finalBlock = decrypt && chunk.byteLength < CHUNK_SIZE
+        if (finalBlock) {
+          // This is the final block, we need to split of the tag
+          this.tag = chunk.slice(-TAGSIZE)
+          chunk = chunk.slice(0, chunk.byteLength - TAGSIZE)
+        }
         const iv = new Uint8Array([...this.nonce, ...this.counter])
 
         console.log(
@@ -93,6 +96,7 @@ class SealTransform extends TransformStream {
         if (!decrypt) this.hash.update(processedChunk)
 
         controller.enqueue(processedChunk)
+        if (!decrypt && finalBlock) controller.enqueue(this.tag)
 
         // Update the counter
         var view = new DataView(this.counter.buffer)
@@ -104,8 +108,17 @@ class SealTransform extends TransformStream {
         console.log('Stream fully processed')
         const tag = this.hash.digest()
         console.log('Authentication tag: ', tag)
+        if (!decrypt) {
+          controller.enqueue(Buffer.from(tag, 'hex'))
+        } else {
+          console.log('tag in stream: ', Buffer.from(this.tag).toString('hex'))
+          console.log('own tag: ', tag)
+          if (this.tag.normalize() !== tag.normalize()) {
+            console.log('tags are unequal')
+          }
+        }
       },
-    })
+    }
   }
 }
 

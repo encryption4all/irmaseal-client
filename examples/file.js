@@ -16,10 +16,11 @@ import { createWriteStream } from 'streamsaver'
 const toReadable = createReadableStreamWrapper(ReadableStream)
 const toWritable = createWritableStreamWrapper(WritableStream)
 
-const secret = window.crypto.getRandomValues(new Uint8Array(32))
+const macKey = window.crypto.getRandomValues(new Uint8Array(32))
+const aesKey = window.crypto.getRandomValues(new Uint8Array(32))
 const nonce = window.crypto.getRandomValues(new Uint8Array(12))
 
-console.log(`encrypting using\nkey = ${secret}\nnonce = ${nonce}`)
+console.log(`encrypting using\nkey = ${aesKey}\nnonce = ${nonce}`)
 
 const listener = async (event) => {
   const decrypt = event.srcElement.classList.contains('decrypt')
@@ -41,7 +42,14 @@ const listener = async (event) => {
 
   await readableStream
     .pipeThrough(
-      new SealTransform({ secret: secret, nonce: nonce, decrypt: decrypt })
+      new TransformStream(
+        new SealTransform({
+          macKey: macKey,
+          aesKey: aesKey,
+          nonce: nonce,
+          decrypt: decrypt,
+        })
+      )
     )
     .pipeTo(writer)
 
