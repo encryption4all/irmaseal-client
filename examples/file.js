@@ -1,5 +1,10 @@
 import 'web-streams-polyfill'
-import { SealTransform } from './../dist/irmaseal-client'
+
+import {
+  SealTransform,
+  makeReadableFileStream,
+} from './../dist/irmaseal-client'
+
 import {
   createReadableStreamWrapper,
   createWritableStreamWrapper,
@@ -13,6 +18,8 @@ const toWritable = createWritableStreamWrapper(WritableStream)
 
 const secret = window.crypto.getRandomValues(new Uint8Array(32))
 const nonce = window.crypto.getRandomValues(new Uint8Array(12))
+
+console.log(`encrypting using\nkey = ${secret}\nnonce = ${nonce}`)
 
 const listener = async (event) => {
   const decrypt = event.srcElement.classList.contains('decrypt')
@@ -28,7 +35,7 @@ const listener = async (event) => {
   })
 
   const writer = toWritable(outStream)
-  const readableStream = toReadable(inFile.stream())
+  const readableStream = toReadable(makeReadableFileStream(inFile))
 
   const t0 = performance.now()
 

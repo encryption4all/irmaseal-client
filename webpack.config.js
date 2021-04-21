@@ -46,7 +46,15 @@ var libConfig = {
 var exampleConfig = {
   name: 'examples',
   mode: webpackMode,
-  entry: { enc: './examples/browser.js', file: './examples/file.js' },
+  entry: {
+    enc: './examples/browser.js',
+    file: './examples/file.js',
+    polyfill: [
+      'core-js/stable',
+      'regenerator-runtime/runtime',
+      'web-streams-polyfill',
+    ],
+  },
   output: {
     path: dist,
     filename: 'example_[name].js',
@@ -62,7 +70,7 @@ var exampleConfig = {
     new HtmlWebpackPlugin({
       filename: 'example_file.html',
       template: './examples/file.html',
-      chunks: ['file'],
+      chunks: ['polyfill', 'file'],
     }),
   ],
 }

@@ -1,6 +1,26 @@
 const Buffer = require('buffer/').Buffer
 const { createSHA3, sha3 } = require('hash-wasm')
 
+const CHUNK_SIZE = 1024 * 1024 // 1 MiB
+
+// Use file or fileHandle or ??
+function makeReadableFileStream(file) {
+  let offset = 0
+  return new ReadableStream({
+    async pull(controller) {
+      const bytesRead = await file
+        .slice(offset, offset + CHUNK_SIZE)
+        .arrayBuffer()
+      if (bytesRead.byteLength === 0) {
+        controller.close()
+      } else {
+        offset += bytesRead.byteLength
+        controller.enqueue(new Uint8Array(bytesRead, 0, bytesRead.byteLength))
+      }
+    },
+  })
+}
+
 // Sizes in bytes
 const KEYSIZE = 32
 const BLOCKSIZE = 16
@@ -89,4 +109,7 @@ class SealTransform extends TransformStream {
   }
 }
 
-module.exports = SealTransform
+module.exports = {
+  SealTransform: SealTransform,
+  makeReadableFileStream: makeReadableFileStream,
+}
