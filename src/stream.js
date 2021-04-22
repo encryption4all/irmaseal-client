@@ -2,7 +2,7 @@ const Buffer = require('buffer/').Buffer
 const { createSHA3 } = require('hash-wasm')
 
 // Sizes in bytes
-const CHUNK_SIZE = 1024 * 1024 // 1 MiB
+const DEFAULTCHUNKSIZE = 1024 * 1024 // 1 MiB
 
 // Encryption constants
 const KEYSIZE = 32
@@ -11,13 +11,18 @@ const NONCESIZE = 12
 const COUNTERSIZE = 4 // do not encrypt more than 2^32 blocks = 2^36 bytes = 68GB!!
 const TAGSIZE = 32
 
-// Use file or fileHandle or ??
-function makeReadableFileStream(file) {
+/**
+ * Creates a ReadableStream that tries to take DEFAULTCHUNKSIZE bytes
+ * of data from the underlying sink till the sink is exhausted.
+ * @param {File} file - file sink to read from.
+ * @param {number} desiredChunkSize - the desired internal buffer.
+ */
+function chunkedFileStream(file, desiredChunkSize = DEFAULTCHUNKSIZE) {
   let offset = 0
   return new ReadableStream({
     async pull(controller) {
       const bytesRead = await file
-        .slice(offset, offset + CHUNK_SIZE)
+        .slice(offset, offset + desiredChunkSize)
         .arrayBuffer()
       if (bytesRead.byteLength === 0) {
         controller.close()
@@ -29,7 +34,81 @@ function makeReadableFileStream(file) {
   })
 }
 
-class SealTransform {
+/**
+ * Transforms streams with randomly sized chunked
+ * to a stream of chunks containing atleast desiredChunkSize bytes.
+ * Only the last chunk is of smaller size.
+ */
+class Chunker {
+  /**
+   * Constructs a new chunker.
+   * @param {object} obj - the chunker options.
+   * @param {number} obj.desiredChunkSize - the desired internal buffer, in bytes.
+   */
+  constructor({ desiredChunkSize = DEFAULTCHUNKSIZE }) {
+    return {
+      start(controller) {
+        this.buf = new ArrayBuffer(desiredChunkSize)
+        this.bufOffset = 0
+      },
+      transform(chunk, controller) {
+        var chunkOffset = 0
+
+        while (true) {
+          if (
+            chunk.byteLength - chunkOffset >
+            desiredChunkSize - this.bufOffset
+          ) {
+            // Copy part of the slice that fits in the buffer
+            const copied = chunk.slice(
+              chunkOffset,
+              chunkOffset + desiredChunkSize - this.bufOffset
+            )
+
+            // TODO: do this more efficiently, with set
+            this.buf = new Uint8Array([
+              ...new Uint8Array(this.buf, 0, this.bufOffset),
+              ...copied,
+            ]).buffer
+            controller.enqueue(new Uint8Array(this.buf))
+
+            chunkOffset += copied.byteLength
+            this.bufOffset = 0
+          } else {
+            // Copy the slice till the end, it will fit in the buffer
+            const copied = chunk.slice(chunkOffset)
+            this.buf = new Uint8Array([
+              ...new Uint8Array(this.buf, 0, this.bufOffset),
+              ...copied,
+            ]).buffer
+
+            chunkOffset += copied.byteLength
+            this.bufOffset += copied.byteLength
+          }
+
+          if (chunkOffset === chunk.byteLength) break
+        }
+      },
+      flush(controller) {
+        controller.enqueue(new Uint8Array(this.buf, 0, this.bufOffset))
+      },
+    }
+  }
+}
+
+/**
+ * SealTransform, class of which instances can be used as parameter
+ * to new Transform.
+ */
+class Sealer {
+  /**
+   * Constructs a new intsance of SealTransform.
+   * @param {Object} obj - SealTransform options.
+   * @param {Uint8Array} obj.macKey - the MAC key.
+   * @param {Uint8Array} obj.aesKey - the AES encryption key.
+   * @param {Uint8Array} obj.nonce - the nonce for encryption.
+   * @param {boolean} obj.decrypt - whether to run in decryption mode.
+   */
   constructor({ macKey, aesKey, nonce, decrypt = false }) {
     return {
       async start(controller) {
@@ -56,24 +135,17 @@ class SealTransform {
         // Start an incremental HMAC with SHA-3 which is just H(k || m)
         this.hash = await createSHA3(256)
         this.hash.update(macKey)
-
-        this.tag = null
       },
       async transform(chunk, controller) {
         const blocks = Math.ceil(chunk.byteLength / BLOCKSIZE)
-        const finalBlock = decrypt && chunk.byteLength < CHUNK_SIZE
-        if (finalBlock) {
-          // This is the final block, we need to split of the tag
-          this.tag = chunk.slice(-TAGSIZE)
-          chunk = chunk.slice(0, chunk.byteLength - TAGSIZE)
-        }
-        const iv = new Uint8Array([...this.nonce, ...this.counter])
 
         console.log(
           `[chunk]: length: ${
             chunk.byteLength
           }, blocks: ${blocks}, type: ${typeof chunk}`
         )
+
+        const iv = new Uint8Array([...this.nonce, ...this.counter])
 
         const fn = async (...args) =>
           decrypt
@@ -92,11 +164,9 @@ class SealTransform {
           chunk
         )
         processedChunk = new Uint8Array(processedChunk)
+        controller.enqueue(processedChunk)
 
         if (!decrypt) this.hash.update(processedChunk)
-
-        controller.enqueue(processedChunk)
-        if (!decrypt && finalBlock) controller.enqueue(this.tag)
 
         // Update the counter
         var view = new DataView(this.counter.buffer)
@@ -105,24 +175,15 @@ class SealTransform {
         view.setUint32(0, value, false)
       },
       flush(controller) {
-        console.log('Stream fully processed')
         const tag = this.hash.digest()
         console.log('Authentication tag: ', tag)
-        if (!decrypt) {
-          controller.enqueue(Buffer.from(tag, 'hex'))
-        } else {
-          console.log('tag in stream: ', Buffer.from(this.tag).toString('hex'))
-          console.log('own tag: ', tag)
-          if (this.tag.normalize() !== tag.normalize()) {
-            console.log('tags are unequal')
-          }
-        }
       },
     }
   }
 }
 
 module.exports = {
-  SealTransform: SealTransform,
-  makeReadableFileStream: makeReadableFileStream,
+  Sealer,
+  Chunker,
+  chunkedFileStream,
 }

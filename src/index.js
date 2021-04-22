@@ -1,5 +1,9 @@
 const irmaFrontend = require('@privacybydesign/irma-frontend')
-const { SealTransform, makeReadableFileStream } = require('./stream')
+const {
+  Sealer,
+  Chunker,
+  chunkedFileStream,
+} = require('./stream')
 
 /**
  * @typedef {Object} Attribute
@@ -193,7 +197,8 @@ class Client {
 }
 
 module.exports = {
-  Client: Client,
-  SealTransform: SealTransform,
-  makeReadableFileStream: makeReadableFileStream,
+  Client,
+  Sealer,
+  Chunker,
+  chunkedFileStream
 }
