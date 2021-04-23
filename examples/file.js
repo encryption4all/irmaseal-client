@@ -17,8 +17,11 @@ const toWritable = createWritableStreamWrapper(WritableStream)
 //const aesKey = window.crypto.getRandomValues(new Uint8Array(32))
 //const nonce = window.crypto.getRandomValues(new Uint8Array(12))
 
+// prettier-ignore
 const aesKey = new Uint8Array([229,113,154,254,224,194,12,223,89,248,13,158,61,7,115,110,114,71,99,14,11,108,233,120,149,170,106,130,61,62,234,33])
+// prettier-ignore
 const macKey = new Uint8Array([18,22,47,8,204,101,2,134,60,23,136,89,235,32,125,119,238,48,230,211,130,79,118,183,155,225,170,71,24,150,219,96])
+// prettier-ignore
 const nonce = new Uint8Array([156,7,105,42,142,152,226,200,127,190,246,59])
 
 console.log(
@@ -40,13 +43,13 @@ const listener = async (event) => {
   })
 
   const writer = toWritable(outStream)
-  const readableStream = toReadable(chunkedFileStream(inFile))
-  //  const readableStream = toReadable(inFile.stream())
+  //const readableStream = toReadable(chunkedFileStream(inFile))
+  const readableStream = toReadable(inFile.stream())
 
   const t0 = performance.now()
 
   await readableStream
-    //  .pipeThrough(new TransformStream(new Chunker(1024 * 1024)))
+    .pipeThrough(new TransformStream(new Chunker(1024 * 1024)))
     .pipeThrough(
       new TransformStream(
         new Sealer({

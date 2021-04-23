@@ -2,7 +2,7 @@ const Buffer = require('buffer/').Buffer
 const { createSHA3 } = require('hash-wasm')
 
 // Sizes in bytes
-const DEFAULTCHUNKSIZE = 1024 * 1024 // 1 MiB
+const DEFAULT_CHUNK_SIZE = 1024 * 1024 // 1 MiB
 
 // Encryption constants
 const KEYSIZE = 32
@@ -12,12 +12,12 @@ const COUNTERSIZE = 4 // do not encrypt more than 2^32 blocks = 2^36 bytes = 68G
 const TAGSIZE = 32
 
 /**
- * Creates a ReadableStream that tries to take DEFAULTCHUNKSIZE bytes
+ * Creates a ReadableStream that tries to take DEFAULT_CHUNK_SIZE bytes
  * of data from the underlying sink till the sink is exhausted.
  * @param {File} file - file sink to read from.
  * @param {number} desiredChunkSize - the desired internal buffer.
  */
-function chunkedFileStream(file, desiredChunkSize = DEFAULTCHUNKSIZE) {
+function chunkedFileStream(file, desiredChunkSize = DEFAULT_CHUNK_SIZE) {
   let offset = 0
   return new ReadableStream({
     async pull(controller) {
@@ -45,7 +45,7 @@ class Chunker {
    * @param {object} obj - the chunker options.
    * @param {number} obj.desiredChunkSize - the desired internal buffer, in bytes.
    */
-  constructor({ desiredChunkSize = DEFAULTCHUNKSIZE }) {
+  constructor({ desiredChunkSize = DEFAULT_CHUNK_SIZE }) {
     return {
       start(controller) {
         this.buf = new ArrayBuffer(desiredChunkSize)
@@ -53,43 +53,31 @@ class Chunker {
       },
       transform(chunk, controller) {
         var chunkOffset = 0
-
-        while (true) {
-          if (
-            chunk.byteLength - chunkOffset >
-            desiredChunkSize - this.bufOffset
-          ) {
-            // Copy part of the slice that fits in the buffer
-            const copied = chunk.slice(
-              chunkOffset,
-              chunkOffset + desiredChunkSize - this.bufOffset
+        while (chunkOffset !== chunk.byteLength) {
+          const remainingChunk = chunk.byteLength - chunkOffset
+          const remainingBuffer = desiredChunkSize - this.bufOffset
+          if (remainingChunk >= remainingBuffer) {
+            // Copy part of the chunk that fits in the buffer
+            new Uint8Array(this.buf).set(
+              chunk.slice(chunkOffset, chunkOffset + remainingBuffer),
+              this.bufOffset
             )
-
-            // TODO: do this more efficiently, with set
-            this.buf = new Uint8Array([
-              ...new Uint8Array(this.buf, 0, this.bufOffset),
-              ...copied,
-            ]).buffer
             controller.enqueue(new Uint8Array(this.buf))
-
-            chunkOffset += copied.byteLength
+            chunkOffset += remainingBuffer
             this.bufOffset = 0
           } else {
-            // Copy the slice till the end, it will fit in the buffer
-            const copied = chunk.slice(chunkOffset)
-            this.buf = new Uint8Array([
-              ...new Uint8Array(this.buf, 0, this.bufOffset),
-              ...copied,
-            ]).buffer
-
-            chunkOffset += copied.byteLength
-            this.bufOffset += copied.byteLength
+            // Copy the chunk till the end, it will fit in the buffer
+            new Uint8Array(this.buf).set(
+              chunk.slice(chunkOffset),
+              this.bufOffset
+            )
+            chunkOffset += remainingChunk
+            this.bufOffset += remainingChunk
           }
-
-          if (chunkOffset === chunk.byteLength) break
         }
       },
       flush(controller) {
+        // Flush the remaining buffer
         controller.enqueue(new Uint8Array(this.buf, 0, this.bufOffset))
       },
     }

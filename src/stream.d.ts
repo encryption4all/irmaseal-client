@@ -34,7 +34,7 @@ export class Chunker {
     });
 }
 /**
- * Creates a ReadableStream that tries to take DEFAULTCHUNKSIZE bytes
+ * Creates a ReadableStream that tries to take DEFAULT_CHUNK_SIZE bytes
  * of data from the underlying sink till the sink is exhausted.
  * @param {File} file - file sink to read from.
  * @param {number} desiredChunkSize - the desired internal buffer.
