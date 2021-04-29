@@ -17,7 +17,11 @@ const TAGSIZE = 32
  * @param {File} file - file sink to read from.
  * @param {number} desiredChunkSize - the desired internal buffer.
  */
-function chunkedFileStream(file, desiredChunkSize = DEFAULT_CHUNK_SIZE, offset = 0) {
+function chunkedFileStream(
+  file,
+  desiredChunkSize = DEFAULT_CHUNK_SIZE,
+  offset = 0
+) {
   return new ReadableStream({
     async pull(controller) {
       const bytesRead = await file
@@ -100,6 +104,7 @@ class Sealer {
    * @param {Uint8Array} obj.macKey - the MAC key.
    * @param {Uint8Array} obj.aesKey - the AES encryption key.
    * @param {Uint8Array} obj.nonce - the nonce for encryption.
+   * @param {Uint8Array} obj.header - the header data.
    * @param {boolean} obj.decrypt - whether to run in decryption mode.
    */
   constructor({ macKey, aesKey, nonce, header, decrypt = false }) {

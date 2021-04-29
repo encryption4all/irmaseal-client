@@ -9,12 +9,14 @@ export class Sealer {
      * @param {Uint8Array} obj.macKey - the MAC key.
      * @param {Uint8Array} obj.aesKey - the AES encryption key.
      * @param {Uint8Array} obj.nonce - the nonce for encryption.
+     * @param {Uint8Array} obj.header - the header data.
      * @param {boolean} obj.decrypt - whether to run in decryption mode.
      */
     constructor({ macKey, aesKey, nonce, header, decrypt }: {
         macKey: Uint8Array;
         aesKey: Uint8Array;
         nonce: Uint8Array;
+        header: Uint8Array;
         decrypt: boolean;
     });
 }
@@ -41,4 +43,4 @@ export class Chunker {
  * @param {File} file - file sink to read from.
  * @param {number} desiredChunkSize - the desired internal buffer.
  */
-export function chunkedFileStream(file: File, desiredChunkSize?: number): ReadableStream<any>;
+export function chunkedFileStream(file: File, desiredChunkSize?: number, offset?: number): ReadableStream<any>;

@@ -2,6 +2,14 @@ const irmaFrontend = require('@privacybydesign/irma-frontend')
 const { Sealer, Chunker, chunkedFileStream } = require('./stream')
 
 /**
+ * @typedef {import('@e4a/irmaseal-wasm-bindings').KeySet} KeySet
+ * @typedef {import('@e4a/irmaseal-wasm-bindings').Metadata} Metadata
+ * @typedef {import('@e4a/irmaseal-wasm-bindings').MetadataCreateResult} MetadataCreateResult
+ * @typedef {import('@e4a/irmaseal-wasm-bindings').MetadataReaderResult} MetadataReaderResult
+ */
+
+
+/**
  * @typedef {Object} Attribute
  * @property {string} type - attribute type.
  * @property {string} [value] - attribute value.
@@ -50,10 +58,9 @@ class Client {
   }
 
   /**
-   * createMetadata.
-   *
-   * @param {Attribute} attribute
-   * @return {Metadata}
+   * Create new Metadata.
+   * @param {Attribute} attribute.
+   * @return {Metadata} metadata.
    */
   createMetadata(attribute) {
     return new this.module.MetadataCreateResult(
@@ -64,8 +71,7 @@ class Client {
   }
 
   /**
-   * extractMetadata.
-   *
+   * Extract Metadata from a ReadableStream.
    * @param {ReadableStream} readable
    * @return {{metadata: Metadata, header: Uint8Array}}
    */

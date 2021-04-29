@@ -1,3 +1,7 @@
+export type KeySet = import('@e4a/irmaseal-wasm-bindings').KeySet;
+export type Metadata = import('@e4a/irmaseal-wasm-bindings').Metadata;
+export type MetadataCreateResult = import('@e4a/irmaseal-wasm-bindings').MetadataCreateResult;
+export type MetadataReaderResult = import('@e4a/irmaseal-wasm-bindings').MetadataReaderResult;
 export type Attribute = {
     /**
      * - attribute type.
@@ -8,6 +12,12 @@ export type Attribute = {
      */
     value?: string;
 };
+/**
+ * @typedef {import('@e4a/irmaseal-wasm-bindings').KeySet} KeySet
+ * @typedef {import('@e4a/irmaseal-wasm-bindings').Metadata} Metadata
+ * @typedef {import('@e4a/irmaseal-wasm-bindings').MetadataCreateResult} MetadataCreateResult
+ * @typedef {import('@e4a/irmaseal-wasm-bindings').MetadataReaderResult} MetadataReaderResult
+ */
 /**
  * @typedef {Object} Attribute
  * @property {string} type - attribute type.
@@ -40,20 +50,18 @@ export class Client {
      */
     loadModule(): Promise<void>;
     /**
-     * createMetadata.
-     *
-     * @param {Attribute} attribute
-     * @return {Metadata}
+     * Create new Metadata.
+     * @param {Attribute} attribute.
+     * @return {Metadata} metadata.
      */
-    createMetadata(attribute: Attribute): any;
+    createMetadata(attribute: any): Metadata;
     /**
-     * extractMetadata.
-     *
+     * Extract Metadata from a ReadableStream.
      * @param {ReadableStream} readable
      * @return {{metadata: Metadata, header: Uint8Array}}
      */
     extractMetadata(readable: ReadableStream): {
-        metadata: any;
+        metadata: Metadata;
         header: Uint8Array;
     };
     /**
@@ -62,7 +70,7 @@ export class Client {
      * @param {Metadata} metadata
      * @param {string} usk
      */
-    derive_keys(metadata: any, usk: string): any;
+    derive_keys(metadata: Metadata, usk: string): import("@e4a/irmaseal-wasm-bindings").KeySet;
     /**
      * Requests a session token for an IRMA identity at the PKG.
      * @param {Attribute}, attribute to retrieve session token for.
