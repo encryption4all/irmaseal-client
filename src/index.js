@@ -1,9 +1,5 @@
 const irmaFrontend = require('@privacybydesign/irma-frontend')
-const {
-  Sealer,
-  Chunker,
-  chunkedFileStream,
-} = require('./stream')
+const { Sealer, Chunker, chunkedFileStream } = require('./stream')
 
 /**
  * @typedef {Object} Attribute
@@ -54,59 +50,52 @@ class Client {
   }
 
   /**
-   * Returns the identity enclosed in the bytestream (including timestamp)
-   * @param {Uint8Array} irmasealBytestream
-   * @returns {Object} identity
-   */
-  extractIdentity(irmasealBytestream) {
-    if (!this.module) throw new Error('WASM module not loaded yet')
-    let serialized = this.module.extract_identity(irmasealBytestream)
-    return JSON.parse(serialized)
-  }
-
-  /**
+   * createMetadata.
    *
-   * @param {Attribute}, singleton attribute identity to encrypt for.
-   * @param {Object} plaintextObject, the object to encrypt.
-   * @returns {Uint8Array} ciphertext.
+   * @param {Attribute} attribute
+   * @return {Metadata}
    */
-  encrypt(attribute, plaintextObject) {
-    if (!this.module) throw new Error('WASM module not loaded yet')
-    // We JSON encode the what object, pad it to a multiple of 2^9 bytes
-    // with size prefixed and then pass it to irmaseal.
-    let encoder = new TextEncoder()
-    let objectBytes = encoder.encode(JSON.stringify(plaintextObject))
-    let l = objectBytes.byteLength
-    if (l >= 65536 - 2) {
-      throw new Error('Too large to encrypt')
-    }
-    const paddingBits = 9 // pad to 2^9 - 2 = 510
-    let paddedLength = (((l + 1) >> paddingBits) + 1) << paddingBits
-    let buf = new ArrayBuffer(paddedLength)
-    let buf8 = new Uint8Array(buf)
-    buf8[0] = l >> 8
-    buf8[1] = l & 255
-    new Uint8Array(buf, 2).set(new Uint8Array(objectBytes))
-    return this.module.encrypt(
+  createMetadata(attribute) {
+    return new this.module.MetadataCreateResult(
       attribute.type,
       attribute.value,
-      this.params.public_key,
-      new Uint8Array(buf)
+      this.params.public_key
     )
   }
 
   /**
-   * Decrypts the irmasealBytestream using the user secret key (USK).
-   * @param {String} usk, user secret key.
-   * @param {Uint8Array} irmasealBytestream,
-   * @returns {Object}, plaintext object.
+   * extractMetadata.
+   *
+   * @param {ReadableStream} readable
+   * @return {{metadata: Metadata, header: Uint8Array}}
    */
-  decrypt(usk, irmasealBytestream) {
-    if (!this.module) throw new Error('WASM module not loaded yet')
-    let buf = this.module.decrypt(irmasealBytestream, usk)
-    let len = (buf[0] << 8) | buf[1]
-    let decoder = new TextDecoder()
-    return JSON.parse(decoder.decode(buf.slice(2, 2 + len)))
+  async extractMetadata(readable) {
+    let reader = readable.getReader()
+    let metadataReader = new this.module.MetadataReader()
+
+    var done, chunk, metadata, header
+    while (true) {
+      ;({ value: chunk, done: done } = await reader.read())
+      ;({
+        header: header,
+        metadata: metadata,
+        done: done,
+      } = metadataReader.feed(chunk))
+      if (done) break
+    }
+    reader.releaseLock()
+
+    return { metadata: metadata, header: header }
+  }
+
+  /**
+   * derive_keys.
+   *
+   * @param {Metadata} metadata
+   * @param {string} usk
+   */
+  derive_keys(metadata, usk) {
+    return metadata.derive_keys(usk)
   }
 
   /**
@@ -200,5 +189,5 @@ module.exports = {
   Client,
   Sealer,
   Chunker,
-  chunkedFileStream
+  chunkedFileStream,
 }

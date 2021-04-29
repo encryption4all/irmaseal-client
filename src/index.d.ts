@@ -40,25 +40,29 @@ export class Client {
      */
     loadModule(): Promise<void>;
     /**
-     * Returns the identity enclosed in the bytestream (including timestamp)
-     * @param {Uint8Array} irmasealBytestream
-     * @returns {Object} identity
-     */
-    extractIdentity(irmasealBytestream: Uint8Array): any;
-    /**
+     * createMetadata.
      *
-     * @param {Attribute}, singleton attribute identity to encrypt for.
-     * @param {Object} plaintextObject, the object to encrypt.
-     * @returns {Uint8Array} ciphertext.
+     * @param {Attribute} attribute
+     * @return {Metadata}
      */
-    encrypt(attribute: any, plaintextObject: any): Uint8Array;
+    createMetadata(attribute: Attribute): any;
     /**
-     * Decrypts the irmasealBytestream using the user secret key (USK).
-     * @param {String} usk, user secret key.
-     * @param {Uint8Array} irmasealBytestream,
-     * @returns {Object}, plaintext object.
+     * extractMetadata.
+     *
+     * @param {ReadableStream} readable
+     * @return {{metadata: Metadata, header: Uint8Array}}
      */
-    decrypt(usk: string, irmasealBytestream: Uint8Array): any;
+    extractMetadata(readable: ReadableStream): {
+        metadata: any;
+        header: Uint8Array;
+    };
+    /**
+     * derive_keys.
+     *
+     * @param {Metadata} metadata
+     * @param {string} usk
+     */
+    derive_keys(metadata: any, usk: string): any;
     /**
      * Requests a session token for an IRMA identity at the PKG.
      * @param {Attribute}, attribute to retrieve session token for.

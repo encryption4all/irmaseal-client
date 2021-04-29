@@ -11,7 +11,7 @@ export class Sealer {
      * @param {Uint8Array} obj.nonce - the nonce for encryption.
      * @param {boolean} obj.decrypt - whether to run in decryption mode.
      */
-    constructor({ macKey, aesKey, nonce, decrypt }: {
+    constructor({ macKey, aesKey, nonce, header, decrypt }: {
         macKey: Uint8Array;
         aesKey: Uint8Array;
         nonce: Uint8Array;
@@ -28,9 +28,11 @@ export class Chunker {
      * Constructs a new chunker.
      * @param {object} obj - the chunker options.
      * @param {number} obj.desiredChunkSize - the desired internal buffer, in bytes.
+     * @param {number} [obj.offset] - how many bytes to discard of the incoming stream.
      */
-    constructor({ desiredChunkSize }: {
+    constructor({ desiredChunkSize, offset }: {
         desiredChunkSize: number;
+        offset?: number;
     });
 }
 /**

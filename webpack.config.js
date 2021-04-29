@@ -20,7 +20,9 @@ var libConfig = {
           loader: 'babel-loader',
           options: {
             presets: ['@babel/preset-env'],
-            plugins: ['@babel/plugin-transform-runtime'],
+            plugins: [
+              '@babel/plugin-transform-runtime',
+            ],
           },
         },
       },
@@ -41,6 +43,9 @@ var libConfig = {
       cleanOnceBeforeBuildPatterns: ['**/*', '!example_**'],
     }),
   ],
+  resolve: {
+    modules: [path.resolve(__dirname, 'node_modules')],
+  },
 }
 
 var exampleConfig = {

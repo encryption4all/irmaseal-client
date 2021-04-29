@@ -17,8 +17,7 @@ const TAGSIZE = 32
  * @param {File} file - file sink to read from.
  * @param {number} desiredChunkSize - the desired internal buffer.
  */
-function chunkedFileStream(file, desiredChunkSize = DEFAULT_CHUNK_SIZE) {
-  let offset = 0
+function chunkedFileStream(file, desiredChunkSize = DEFAULT_CHUNK_SIZE, offset = 0) {
   return new ReadableStream({
     async pull(controller) {
       const bytesRead = await file
@@ -44,15 +43,21 @@ class Chunker {
    * Constructs a new chunker.
    * @param {object} obj - the chunker options.
    * @param {number} obj.desiredChunkSize - the desired internal buffer, in bytes.
+   * @param {number} [obj.offset] - how many bytes to discard of the incoming stream.
    */
-  constructor({ desiredChunkSize = DEFAULT_CHUNK_SIZE }) {
+  constructor({ desiredChunkSize = DEFAULT_CHUNK_SIZE, offset = 0 }) {
     return {
       start(controller) {
         this.buf = new ArrayBuffer(desiredChunkSize)
         this.bufOffset = 0
+        this.firstChunk = true
       },
       transform(chunk, controller) {
         var chunkOffset = 0
+        if (this.firstChunk) {
+          chunkOffset = offset
+          this.firstChunk = false
+        }
         while (chunkOffset !== chunk.byteLength) {
           const remainingChunk = chunk.byteLength - chunkOffset
           const remainingBuffer = desiredChunkSize - this.bufOffset
@@ -97,13 +102,16 @@ class Sealer {
    * @param {Uint8Array} obj.nonce - the nonce for encryption.
    * @param {boolean} obj.decrypt - whether to run in decryption mode.
    */
-  constructor({ macKey, aesKey, nonce, decrypt = false }) {
+  constructor({ macKey, aesKey, nonce, header, decrypt = false }) {
+    if (
+      aesKey.byteLength !== KEYSIZE ||
+      macKey.byteLength !== KEYSIZE ||
+      nonce.byteLength !== NONCESIZE
+    )
+      throw new Error('key or nonce wrong size')
+
     return {
       async start(controller) {
-        console.log('Start processing stream')
-        if (aesKey.byteLength !== KEYSIZE || nonce.byteLength !== NONCESIZE)
-          throw new Error('key or nonce wrong size')
-
         const keySpec = {
           name: 'AES-CTR',
           length: KEYSIZE * 8,
@@ -120,9 +128,12 @@ class Sealer {
         this.nonce = new Uint8Array(nonce).reverse()
         this.counter = Uint8Array.from('0'.repeat(COUNTERSIZE))
 
-        // Start an incremental HMAC with SHA-3 which is just H(k || m)
+        // Start an incremental HMAC with SHA-3 which is just H(k || m = (header || payload))
         this.hash = await createSHA3(256)
         this.hash.update(macKey)
+        this.hash.update(header)
+
+        if (!decrypt) controller.enqueue(header)
       },
       async transform(chunk, controller) {
         const blocks = Math.ceil(chunk.byteLength / BLOCKSIZE)
