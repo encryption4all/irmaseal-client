@@ -24,15 +24,6 @@ const listener = async (event) => {
   const decrypt = event.srcElement.classList.contains('decrypt')
   const [inFile] = event.srcElement.files
 
-  const outFileName = decrypt
-    ? inFile.name.replace('.enc', '')
-    : `${inFile.name}.enc`
-
-  const outStream = createWriteStream(outFileName)
-
-  const writer = toWritable(outStream)
-  const metadataStream = chunkedFileStream(inFile, 512)
-
   var header, meta, keys
 
   if (!decrypt) {
@@ -42,36 +33,40 @@ const listener = async (event) => {
     }
     ;({ header, metadata: meta, keys } = client.createMetadata(attribute)) // = MetadataCreateResult
   } else {
+    const metadataStream = chunkedFileStream(inFile, { desiredChunkSize: 512 }) // read in small chunks
     ;({ header, metadata: meta } = await client.extractMetadata(metadataStream)) // = MetadataReaderResult
     let usk = await client
-      .requestToken(meta.metadata.identity.attribute)
+      .requestToken(meta.to_json().identity.attribute)
       .then((token) =>
-        client.requestKey(token, meta.metadata.identity.timestamp)
+        client.requestKey(token, meta.to_json().identity.timestamp)
       )
-    keys = client.derive_keys(meta, usk)
+    keys = meta.derive_keys(usk)
   }
 
-  // js object metadata from Metadata instance
-  const metadata = meta.metadata
+  const metadata = meta.to_json()
   console.log('metadata: ', metadata)
   console.log('aes: ', keys.aes_key)
   console.log('mac: ', keys.mac_key)
   console.log('header: ', header)
 
+  const readableStream = toReadable(
+    chunkedFileStream(inFile, { offset: decrypt ? header.byteLength : 0 })
+  )
+
+  const outFileName = decrypt
+    ? inFile.name.replace('.enc', '')
+    : `${inFile.name}.enc`
+
+  const outStream = createWriteStream(outFileName, {
+    size: decrypt
+      ? inFile.size - header.byteLength - 32
+      : inFile.size + header.byteLength + 32,
+  })
+  const writer = toWritable(outStream)
+
   const t0 = performance.now()
-  const offset = decrypt ? header.byteLength : 0
-  const readableStream = toReadable(chunkedFileStream(inFile, 1 * 1024, offset))
 
   await readableStream
-    // Contains a bug still
-    //    .pipeThrough(
-    //      new TransformStream(
-    //        new Chunker({
-    //          desiredChunkSize: 64 * 1024,
-    //          ...(decrypt && { offset: meta.header.byteLength }),
-    //        })
-    //      )
-    //    )
     .pipeThrough(
       new TransformStream(
         new Sealer({
@@ -84,7 +79,6 @@ const listener = async (event) => {
       )
     )
     .pipeTo(writer)
-
   const tEncrypt = performance.now() - t0
 
   console.log(`tEncrypt/Decrypt ${tEncrypt}$ ms`)

@@ -1,4 +1,4 @@
-import { Client } from './../dist/irmaseal-client.js'
+import { Client, symcrypt } from './../dist/irmaseal-client.js'
 
 window.onload = async () => {
   // Create a client
@@ -13,34 +13,48 @@ window.onload = async () => {
     value: email,
   }
 
-  // The Javascript object to encrypt
-  let some_object = {
-    some: 'object',
-  }
+  const encoder = new TextEncoder()
+  let obj = { x: 'test' }
+  let string = JSON.stringify(obj)
+  let bytes = encoder.encode(string)
 
-  // Encrypt the object
-  console.log('encrypting some object:', some_object)
-  var t0 = performance.now()
-  let ct = client.encrypt(identity, some_object)
-  var t_encrypt = performance.now() - t0
-  console.log('ct:', ct)
-  console.log(`t_encrypt: ${t_encrypt} ms`)
+  let meta = client.createMetadata(identity)
+  let metadata = meta.metadata.to_json()
+  console.log('meta.header: ', meta.header)
+  console.log('meta.keys: ', meta.keys)
+  console.log('meta.metadata: ', metadata)
+  console.log('nonce: ', metadata.iv)
 
-  // Retrieve the timestamp from the identity in the IRMAseal bytestream
-  let retrievedIdentity = client.extractIdentity(ct)
-  let timestamp = retrievedIdentity.timestamp
+  let ct = await symcrypt(
+    meta.keys,
+    metadata.iv.slice(0, 12),
+    meta.header,
+    bytes
+  )
+  console.log('ct :', ct)
 
+  // TODO: get the metadata out of the stream
   // Request a token for for the identity
   console.log('requesting token')
 
-  client.requestToken(identity).then((token) => {
-    // Use token to get a key for a specific timestamp
-    client.requestKey(token, timestamp).then((key) => {
-      t0 = performance.now()
-      let plain = client.decrypt(key, ct)
-      var t_decrypt = performance.now() - t0
-      console.log('decrypted plaintext: ', plain)
-      console.log(`t_decrypt: ${t_decrypt} ms`)
-    })
-  })
+  const usk = await client
+    .requestToken(identity)
+    .then((token) => client.requestKey(token, metadata.identity.timestamp))
+
+  console.log('got usk from pkg: ', usk)
+  let derived_keys = meta.metadata.derive_keys(usk)
+
+  let plain = await symcrypt(
+    derived_keys,
+    metadata.iv.slice(0, 12),
+    meta.header,
+    ct,
+    true
+  )
+
+  const decoder = new TextDecoder()
+  let string2 = decoder.decode(plain)
+  let obj2 = JSON.parse(string2)
+
+  console.log('decrypted obj: ', obj2)
 }

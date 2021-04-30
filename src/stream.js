@@ -1,10 +1,13 @@
-const Buffer = require('buffer/').Buffer
 const { createSHA3 } = require('hash-wasm')
+const Buffer = require('buffer/').Buffer
 
-// Sizes in bytes
-const DEFAULT_CHUNK_SIZE = 1024 * 1024 // 1 MiB
+// TODO: get constants from rust
+// TODO: avoid more copies
+
+const DEFAULT_CHUNK_SIZE = 64 * 1024 // 64 KiB
 
 // Encryption constants
+const ALGO = 'AES-CTR'
 const KEYSIZE = 32
 const BLOCKSIZE = 16
 const NONCESIZE = 12
@@ -19,8 +22,7 @@ const TAGSIZE = 32
  */
 function chunkedFileStream(
   file,
-  desiredChunkSize = DEFAULT_CHUNK_SIZE,
-  offset = 0
+  { offset = 0, desiredChunkSize = DEFAULT_CHUNK_SIZE }
 ) {
   return new ReadableStream({
     async pull(controller) {
@@ -41,6 +43,7 @@ function chunkedFileStream(
  * Transforms streams with randomly sized chunked
  * to a stream of chunks containing atleast desiredChunkSize bytes.
  * Only the last chunk is of smaller size.
+ * TODO: do not use! There's still a bug in there...
  */
 class Chunker {
   /**
@@ -93,6 +96,21 @@ class Chunker {
   }
 }
 
+// helper function
+const _paramSpec = (iv) => {
+  return {
+    name: ALGO,
+    counter: iv,
+    length: COUNTERSIZE * 8, // length of the counter, in bits
+  }
+}
+
+const TagLocation = Object.freeze({
+  tagInFinalBlock: 1,
+  lastBlockIsTag: 2,
+  tagSplitInFinalTwoBlocks: 3,
+})
+
 /**
  * SealTransform, class of which instances can be used as parameter
  * to new Transform.
@@ -118,7 +136,7 @@ class Sealer {
     return {
       async start(controller) {
         const keySpec = {
-          name: 'AES-CTR',
+          name: ALGO,
           length: KEYSIZE * 8,
         }
         this.aesKey = await window.crypto.subtle.importKey(
@@ -138,7 +156,16 @@ class Sealer {
         this.hash.update(macKey)
         this.hash.update(header)
 
-        if (!decrypt) controller.enqueue(header)
+        if (decrypt) {
+          // for decryption we need some extra bookkeeping
+          // keep track of the previous ct and iv and the last
+          // 32 bytes seen in the ciphertext stream
+          this.previousCt = null
+          this.previousIv = null
+          this.tag = null
+
+          this.tagLocation = null
+        } else controller.enqueue(header)
       },
       async transform(chunk, controller) {
         const blocks = Math.ceil(chunk.byteLength / BLOCKSIZE)
@@ -151,26 +178,47 @@ class Sealer {
 
         const iv = new Uint8Array([...this.nonce, ...this.counter])
 
-        const fn = async (...args) =>
-          decrypt
-            ? window.crypto.subtle.decrypt(...args)
-            : window.crypto.subtle.encrypt(...args)
-
-        if (decrypt) this.hash.update(chunk)
-
-        var processedChunk = await fn(
-          {
-            name: 'AES-CTR',
-            counter: iv,
-            length: COUNTERSIZE * 8, // length of the counter, in bits
-          },
-          this.aesKey,
-          chunk
-        )
-        processedChunk = new Uint8Array(processedChunk)
-        controller.enqueue(processedChunk)
-
-        if (!decrypt) this.hash.update(processedChunk)
+        if (decrypt) {
+          if (chunk.byteLength >= TAGSIZE) {
+            // the tag was not in the previous ciphertext block
+            // it's safe to process it now
+            // i.e. mac-than-encrypt
+            if (this.previousCt) {
+              this.hash.update(this.previousCt)
+              const plain = await window.crypto.subtle.decrypt(
+                _paramSpec(this.previousIv),
+                this.aesKey,
+                this.previousCt
+              )
+              const plainUint8Array = new Uint8Array(plain)
+              controller.enqueue(plainUint8Array)
+            }
+            if (chunk.byteLength == TAGSIZE)
+              this.tagLocation = TagLocation.lastBlockIsTag
+            else this.tagLocation = TagLocation.tagInFinalBlock
+          } else {
+            // edge case: tag is split across last two blocks
+            // we set the tag and previousCt here otherwise going
+            // to the next round forgets this data
+            this.tagLocation = TagLocation.tagSplitInFinalTwoBlocks
+            const tagBytesInPrevious = TAGSIZE - chunk.byteLength
+            this.tag = [...this.previousCt.slice(-tagBytesInPrevious), ...chunk]
+            this.previousCt = this.previousCt.slice(0, -tagBytesInPrevious)
+          }
+          // prepare for next round
+          this.previousCt = chunk
+          this.previousIv = iv
+        } else {
+          // encryption mode: encrypt-then-mac
+          const ct = await window.crypto.subtle.encrypt(
+            _paramSpec(iv),
+            this.aesKey,
+            chunk
+          )
+          const ctUint8Array = new Uint8Array(ct)
+          this.hash.update(ctUint8Array)
+          controller.enqueue(ctUint8Array)
+        }
 
         // Update the counter
         var view = new DataView(this.counter.buffer)
@@ -178,9 +226,44 @@ class Sealer {
         value += blocks
         view.setUint32(0, value, false)
       },
-      flush(controller) {
-        const tag = this.hash.digest()
-        console.log('Authentication tag: ', tag)
+      async flush(controller) {
+        if (decrypt) {
+          switch (this.tagLocation) {
+            case TagLocation.tagInFinalBlock:
+              this.tag = this.previousCt.slice(-TAGSIZE)
+              this.previousCt = this.previousCt.slice(0, -TAGSIZE)
+              break
+            case TagLocation.lastBlockIsTag:
+              this.tag = this.previousCt.slice(-TAGSIZE)
+              this.previousCt = null
+              break
+            case TagLocation.tagSplitInFinalTwoBlocks:
+              // are set
+              break
+            default:
+              controller.error()
+          }
+          if (this.previousCt) {
+            this.hash.update(this.previousCt)
+            const plain = await window.crypto.subtle.decrypt(
+              _paramSpec(this.previousIv),
+              this.aesKey,
+              this.previousCt
+            )
+            const plainUint8Array = new Uint8Array(plain)
+            controller.enqueue(plainUint8Array)
+          }
+          const found = Buffer.from(this.tag).toString('hex')
+          const tag = this.hash.digest()
+          console.log('tag found in stream: ', found)
+          console.log('produced tag: ', tag)
+          if (found.normalize() != tag.normalize())
+            controller.error(new Error('tags do not match'))
+        } else {
+          const tag = this.hash.digest()
+          controller.enqueue(new Uint8Array(Buffer.from(tag, 'hex')))
+          console.log('produced tag: ', tag)
+        }
       },
     }
   }

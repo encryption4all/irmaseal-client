@@ -1,5 +1,6 @@
 const irmaFrontend = require('@privacybydesign/irma-frontend')
 const { Sealer, Chunker, chunkedFileStream } = require('./stream')
+const { symcrypt } = require('./symcrypt')
 
 /**
  * @typedef {import('@e4a/irmaseal-wasm-bindings').KeySet} KeySet
@@ -7,7 +8,6 @@ const { Sealer, Chunker, chunkedFileStream } = require('./stream')
  * @typedef {import('@e4a/irmaseal-wasm-bindings').MetadataCreateResult} MetadataCreateResult
  * @typedef {import('@e4a/irmaseal-wasm-bindings').MetadataReaderResult} MetadataReaderResult
  */
-
 
 /**
  * @typedef {Object} Attribute
@@ -60,7 +60,7 @@ class Client {
   /**
    * Create new Metadata.
    * @param {Attribute} attribute.
-   * @return {Metadata} metadata.
+   * @return {MetadataCreateResult} metadata.
    */
   createMetadata(attribute) {
     return new this.module.MetadataCreateResult(
@@ -92,16 +92,6 @@ class Client {
     reader.releaseLock()
 
     return { metadata: metadata, header: header }
-  }
-
-  /**
-   * derive_keys.
-   *
-   * @param {Metadata} metadata
-   * @param {string} usk
-   */
-  derive_keys(metadata, usk) {
-    return metadata.derive_keys(usk)
   }
 
   /**
@@ -196,4 +186,5 @@ module.exports = {
   Sealer,
   Chunker,
   chunkedFileStream,
+  symcrypt,
 }
