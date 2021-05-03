@@ -14,8 +14,9 @@ window.onload = async () => {
   }
 
   const encoder = new TextEncoder()
-  let obj = { x: 'test' }
-  let string = JSON.stringify(obj)
+  //let obj = { x: 'test' }
+  //let string = JSON.stringify(obj)
+  let string = 'hello'
   let bytes = encoder.encode(string)
 
   let meta = client.createMetadata(identity)
@@ -54,7 +55,7 @@ window.onload = async () => {
 
   const decoder = new TextDecoder()
   let string2 = decoder.decode(plain)
-  let obj2 = JSON.parse(string2)
+  //let obj2 = JSON.parse(string2)
 
-  console.log('decrypted obj: ', obj2)
+  console.log('decrypted obj: ', string2)
 }

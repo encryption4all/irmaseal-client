@@ -4,13 +4,13 @@ const Buffer = require('buffer/').Buffer
 // TODO: get constants from rust
 // TODO: avoid more copies
 
-const DEFAULT_CHUNK_SIZE = 64 * 1024 // 64 KiB
+const DEFAULT_CHUNK_SIZE = 16 * 1024 // 64 KiB
 
 // Encryption constants
 const ALGO = 'AES-CTR'
 const KEYSIZE = 32
-const BLOCKSIZE = 16
-const NONCESIZE = 12
+const BLOCKSIZE = (IVSIZE = 16)
+const NONCESIZE = 8
 const COUNTERSIZE = 4 // do not encrypt more than 2^32 blocks = 2^36 bytes = 68GB!!
 const TAGSIZE = 32
 
@@ -125,11 +125,11 @@ class Sealer {
    * @param {Uint8Array} obj.header - the header data.
    * @param {boolean} obj.decrypt - whether to run in decryption mode.
    */
-  constructor({ macKey, aesKey, nonce, header, decrypt = false }) {
+  constructor({ macKey, aesKey, iv, header, decrypt = false }) {
     if (
       aesKey.byteLength !== KEYSIZE ||
       macKey.byteLength !== KEYSIZE ||
-      nonce.byteLength !== NONCESIZE
+      iv.byteLength !== IVSIZE
     )
       throw new Error('key or nonce wrong size')
 
@@ -147,9 +147,7 @@ class Sealer {
           ['encrypt', 'decrypt']
         )
 
-        // IV = nonce (12-byte) || counter (4-byte)
-        this.nonce = new Uint8Array(nonce).reverse()
-        this.counter = Uint8Array.from('0'.repeat(COUNTERSIZE))
+        this.iv = new Uint8Array(iv)
 
         // Start an incremental HMAC with SHA-3 which is just H(k || m = (header || payload))
         this.hash = await createSHA3(256)
@@ -163,26 +161,17 @@ class Sealer {
           this.previousCt = null
           this.previousIv = null
           this.tag = null
-
           this.tagLocation = null
         } else controller.enqueue(header)
       },
       async transform(chunk, controller) {
         const blocks = Math.ceil(chunk.byteLength / BLOCKSIZE)
 
-        console.log(
-          `[chunk]: length: ${
-            chunk.byteLength
-          }, blocks: ${blocks}, type: ${typeof chunk}`
-        )
-
-        const iv = new Uint8Array([...this.nonce, ...this.counter])
-
         if (decrypt) {
           if (chunk.byteLength >= TAGSIZE) {
             // the tag was not in the previous ciphertext block
             // it's safe to process it now
-            // i.e. mac-than-encrypt
+            // i.e. mac-then-decrypt
             if (this.previousCt) {
               this.hash.update(this.previousCt)
               const plain = await window.crypto.subtle.decrypt(
@@ -207,11 +196,11 @@ class Sealer {
           }
           // prepare for next round
           this.previousCt = chunk
-          this.previousIv = iv
+          this.previousIv = new Uint8Array(this.iv)
         } else {
           // encryption mode: encrypt-then-mac
           const ct = await window.crypto.subtle.encrypt(
-            _paramSpec(iv),
+            _paramSpec(this.iv),
             this.aesKey,
             chunk
           )
@@ -221,10 +210,10 @@ class Sealer {
         }
 
         // Update the counter
-        var view = new DataView(this.counter.buffer)
-        var value = view.getUint32(0, false)
-        value += blocks
-        view.setUint32(0, value, false)
+        var view = new DataView(this.iv.buffer)
+        var value = view.getBigUint64(NONCESIZE, false)
+        value += BigInt(blocks)
+        view.setBigUint64(NONCESIZE, value, false)
       },
       async flush(controller) {
         if (decrypt) {

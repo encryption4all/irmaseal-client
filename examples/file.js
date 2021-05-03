@@ -72,7 +72,7 @@ const listener = async (event) => {
         new Sealer({
           aesKey: keys.aes_key,
           macKey: keys.mac_key,
-          nonce: metadata.iv.slice(0, 12),
+          iv: metadata.iv,
           header: header,
           decrypt: decrypt,
         })
