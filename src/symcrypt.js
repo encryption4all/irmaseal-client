@@ -1,28 +1,29 @@
 const { Sealer } = require('./stream')
 
 /**
- * encrypt.
- * @param {KeySet} keys
- * @param {Uint8Array} in
- * @return {Uint8Array}
+ * Symmetrical encryption.
+ * @param {KeySet} keys - key set to encrypt/decrypt with.
+ * @param {Uint8Array} iv - initialization vector including counter.
+ * @param {Uint8Array} header - the IRMAseal header data.
+ * @param {Uint8Array} input - plaintext in encryption mode or ciphertext in decryption mode.
+ * @return {Uint8Array} - vice versa as above.
  * when encrypting:
- * out (= ct) = header || ct || tag
- * where ct = enc (k_aes || in )
+ * out = header || ct || tag
+ * where ct = enc (k_aes, in)
  * and tag = H ( k_mac || header || ct )
  * when decrypting:
- * out (= plain) = dec(k_aes, ct)
+ * out = dec(k_aes, ct)
  * tag_1 = H (k_mac || header || ct)
  * tag_2 = tag from ciphertext
  * Throws error if tags don't match
  */
-async function symcrypt(keys, nonce, header, input, decrypt = false) {
-  console.log('input length: ', input.byteLength)
+async function symcrypt(keys, iv, header, input, decrypt = false) {
   const outLen = decrypt
     ? input.byteLength - header.byteLength - 32
     : input.byteLength + header.byteLength + 32
 
-  console.log('creating buffer of size: ', outLen)
   const out = new ArrayBuffer(outLen)
+  // don't decrypt header in decryption mode
   var readerOffset = decrypt ? header.byteLength : 0
   var writerOffset = 0
 
@@ -38,7 +39,7 @@ async function symcrypt(keys, nonce, header, input, decrypt = false) {
         new Sealer({
           aesKey: keys.aes_key,
           macKey: keys.mac_key,
-          nonce: nonce,
+          iv: iv,
           header,
           decrypt,
         })
@@ -53,7 +54,6 @@ async function symcrypt(keys, nonce, header, input, decrypt = false) {
       })
     )
 
-  console.log(out)
   return new Uint8Array(out)
 }
 

@@ -26,12 +26,7 @@ window.onload = async () => {
   console.log('meta.metadata: ', metadata)
   console.log('nonce: ', metadata.iv)
 
-  let ct = await symcrypt(
-    meta.keys,
-    metadata.iv.slice(0, 12),
-    meta.header,
-    bytes
-  )
+  let ct = await symcrypt(meta.keys, metadata.iv, meta.header, bytes)
   console.log('ct :', ct)
 
   // TODO: get the metadata out of the stream
@@ -45,13 +40,7 @@ window.onload = async () => {
   console.log('got usk from pkg: ', usk)
   let derived_keys = meta.metadata.derive_keys(usk)
 
-  let plain = await symcrypt(
-    derived_keys,
-    metadata.iv.slice(0, 12),
-    meta.header,
-    ct,
-    true
-  )
+  let plain = await symcrypt(derived_keys, metadata.iv, meta.header, ct, true)
 
   const decoder = new TextDecoder()
   let string2 = decoder.decode(plain)
