@@ -10,24 +10,23 @@ const DEFAULT_CHUNK_SIZE = 16 * 1024 // 64 KiB
 const ALGO = 'AES-CTR'
 const KEYSIZE = 32
 const BLOCKSIZE = (IVSIZE = 16)
-const NONCESIZE = 8
-const COUNTERSIZE = 4 // do not encrypt more than 2^32 blocks = 2^36 bytes = 68GB!!
+const NONCESIZE = COUNTERSIZE = 8
 const TAGSIZE = 32
 
 /**
  * Creates a ReadableStream that tries to take DEFAULT_CHUNK_SIZE bytes
  * of data from the underlying sink till the sink is exhausted.
- * @param {File} file - file sink to read from.
- * @param {number} desiredChunkSize - the desired internal buffer.
+ * @param {File} file - file source to read from.
+ * @param {number} chunkSize - the desired internal buffer.
  */
 function chunkedFileStream(
   file,
-  { offset = 0, desiredChunkSize = DEFAULT_CHUNK_SIZE }
+  { offset = 0, chunkSize = DEFAULT_CHUNK_SIZE }
 ) {
   return new ReadableStream({
     async pull(controller) {
       const bytesRead = await file
-        .slice(offset, offset + desiredChunkSize)
+        .slice(offset, offset + chunkSize)
         .arrayBuffer()
       if (bytesRead.byteLength === 0) {
         controller.close()
@@ -41,7 +40,7 @@ function chunkedFileStream(
 
 /**
  * Transforms streams with randomly sized chunked
- * to a stream of chunks containing atleast desiredChunkSize bytes.
+ * to a stream of chunks containing atleast chunkSize bytes.
  * Only the last chunk is of smaller size.
  * TODO: do not use! There's still a bug in there...
  */
@@ -49,13 +48,13 @@ class Chunker {
   /**
    * Constructs a new chunker.
    * @param {object} obj - the chunker options.
-   * @param {number} obj.desiredChunkSize - the desired internal buffer, in bytes.
+   * @param {number} obj.chunkSize - the desired internal buffer, in bytes.
    * @param {number} [obj.offset] - how many bytes to discard of the incoming stream.
    */
-  constructor({ desiredChunkSize = DEFAULT_CHUNK_SIZE, offset = 0 }) {
+  constructor({ offset = 0, chunkSize = DEFAULT_CHUNK_SIZE }) {
     return {
       start(controller) {
-        this.buf = new ArrayBuffer(desiredChunkSize)
+        this.buf = new ArrayBuffer(chunkSize)
         this.bufOffset = 0
         this.firstChunk = true
       },
@@ -67,7 +66,7 @@ class Chunker {
         }
         while (chunkOffset !== chunk.byteLength) {
           const remainingChunk = chunk.byteLength - chunkOffset
-          const remainingBuffer = desiredChunkSize - this.bufOffset
+          const remainingBuffer = chunkSize - this.bufOffset
           if (remainingChunk >= remainingBuffer) {
             // Copy part of the chunk that fits in the buffer
             new Uint8Array(this.buf).set(
@@ -96,7 +95,7 @@ class Chunker {
   }
 }
 
-// helper function
+// helper function to create parameters using variable IVs
 const _paramSpec = (iv) => {
   return {
     name: ALGO,
@@ -106,9 +105,8 @@ const _paramSpec = (iv) => {
 }
 
 const TagLocation = Object.freeze({
-  tagInFinalBlock: 1,
-  lastBlockIsTag: 2,
-  tagSplitInFinalTwoBlocks: 3,
+  IN_FINAL_BLOCK: 1,
+  IN_FINAL_TWO_BLOCKS: 2,
 })
 
 /**
@@ -121,7 +119,7 @@ class Sealer {
    * @param {Object} obj - SealTransform options.
    * @param {Uint8Array} obj.macKey - the MAC key.
    * @param {Uint8Array} obj.aesKey - the AES encryption key.
-   * @param {Uint8Array} obj.nonce - the nonce for encryption.
+   * @param {Uint8Array} obj.iv - the initialization vector (including 64-bit BE counter) for encryption.
    * @param {Uint8Array} obj.header - the header data.
    * @param {boolean} obj.decrypt - whether to run in decryption mode.
    */
@@ -158,10 +156,12 @@ class Sealer {
           // for decryption we need some extra bookkeeping
           // keep track of the previous ct and iv and the last
           // 32 bytes seen in the ciphertext stream
-          this.previousCt = null
-          this.previousIv = null
-          this.tag = null
-          this.tagLocation = null
+          ;[this.previousCt, this.previousIv, this.tag, this.tagLocation] = [
+            undefined,
+            undefined,
+            undefined,
+            TagLocation.IN_FINAL_BLOCK,
+          ]
         } else controller.enqueue(header)
       },
       async transform(chunk, controller) {
@@ -172,24 +172,20 @@ class Sealer {
             // the tag was not in the previous ciphertext block
             // it's safe to process it now
             // i.e. mac-then-decrypt
-            if (this.previousCt) {
+            if (this.previousCt?.byteLength > 0) {
               this.hash.update(this.previousCt)
               const plain = await window.crypto.subtle.decrypt(
                 _paramSpec(this.previousIv),
                 this.aesKey,
                 this.previousCt
               )
-              const plainUint8Array = new Uint8Array(plain)
-              controller.enqueue(plainUint8Array)
+              controller.enqueue(new Uint8Array(plain))
             }
-            if (chunk.byteLength == TAGSIZE)
-              this.tagLocation = TagLocation.lastBlockIsTag
-            else this.tagLocation = TagLocation.tagInFinalBlock
           } else {
             // edge case: tag is split across last two blocks
             // we set the tag and previousCt here otherwise going
             // to the next round forgets this data
-            this.tagLocation = TagLocation.tagSplitInFinalTwoBlocks
+            this.tagLocation = TagLocation.IN_FINAL_TWO_BLOCKS
             const tagBytesInPrevious = TAGSIZE - chunk.byteLength
             this.tag = [...this.previousCt.slice(-tagBytesInPrevious), ...chunk]
             this.previousCt = this.previousCt.slice(0, -tagBytesInPrevious)
@@ -217,30 +213,18 @@ class Sealer {
       },
       async flush(controller) {
         if (decrypt) {
-          switch (this.tagLocation) {
-            case TagLocation.tagInFinalBlock:
-              this.tag = this.previousCt.slice(-TAGSIZE)
-              this.previousCt = this.previousCt.slice(0, -TAGSIZE)
-              break
-            case TagLocation.lastBlockIsTag:
-              this.tag = this.previousCt.slice(-TAGSIZE)
-              this.previousCt = null
-              break
-            case TagLocation.tagSplitInFinalTwoBlocks:
-              // are set
-              break
-            default:
-              controller.error()
+          if (TagLocation.IN_FINAL_BLOCK) {
+            this.tag = this.previousCt.slice(-TAGSIZE)
+            this.previousCt = this.previousCt.slice(0, -TAGSIZE)
           }
-          if (this.previousCt) {
+          if (this.previousCt?.byteLength > 0) {
             this.hash.update(this.previousCt)
             const plain = await window.crypto.subtle.decrypt(
               _paramSpec(this.previousIv),
               this.aesKey,
               this.previousCt
             )
-            const plainUint8Array = new Uint8Array(plain)
-            controller.enqueue(plainUint8Array)
+            controller.enqueue(new Uint8Array(plainUint8Array))
           }
           const found = Buffer.from(this.tag).toString('hex')
           const tag = this.hash.digest()

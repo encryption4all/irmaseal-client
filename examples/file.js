@@ -33,7 +33,7 @@ const listener = async (event) => {
     }
     ;({ header, metadata: meta, keys } = client.createMetadata(attribute)) // = MetadataCreateResult
   } else {
-    const metadataStream = chunkedFileStream(inFile, { desiredChunkSize: 512 }) // read in small chunks
+    const metadataStream = chunkedFileStream(inFile, { chunkSize: 512 }) // read in small chunks
     ;({ header, metadata: meta } = await client.extractMetadata(metadataStream)) // = MetadataReaderResult
     let usk = await client
       .requestToken(meta.to_json().identity.attribute)
