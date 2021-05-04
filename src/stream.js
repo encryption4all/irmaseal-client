@@ -4,13 +4,13 @@ const Buffer = require('buffer/').Buffer
 // TODO: get constants from rust
 // TODO: avoid more copies
 
-const DEFAULT_CHUNK_SIZE = 16 * 1024 // 64 KiB
+const DEFAULT_CHUNK_SIZE = 16 * 1024 // 16 KiB
 
 // Encryption constants
 const ALGO = 'AES-CTR'
 const KEYSIZE = 32
 const BLOCKSIZE = (IVSIZE = 16)
-const NONCESIZE = COUNTERSIZE = 8
+const NONCESIZE = (COUNTERSIZE = 8)
 const TAGSIZE = 32
 
 /**
@@ -95,7 +95,10 @@ class Chunker {
   }
 }
 
-// helper function to create parameters using variable IVs
+/**
+ * Creates a subtle crypto AES-CTR parameter specification.
+ * @param {Uint8Array} iv, the initialization vector.
+ */
 const _paramSpec = (iv) => {
   return {
     name: ALGO,
@@ -104,10 +107,20 @@ const _paramSpec = (iv) => {
   }
 }
 
-const TagLocation = Object.freeze({
-  IN_FINAL_BLOCK: 1,
-  IN_FINAL_TWO_BLOCKS: 2,
-})
+/**
+ * Creates a subtle crypto AES key
+ * @param {Uint8Array} key, key bytes.
+ */
+const _createKey = async (key) => {
+  const keySpec = {
+    name: ALGO,
+    length: KEYSIZE * 8,
+  }
+  return await window.crypto.subtle.importKey('raw', key, keySpec, true, [
+    'encrypt',
+    'decrypt',
+  ])
+}
 
 /**
  * SealTransform, class of which instances can be used as parameter
@@ -131,47 +144,123 @@ class Sealer {
     )
       throw new Error('key or nonce wrong size')
 
-    return {
-      async start(controller) {
-        const keySpec = {
-          name: ALGO,
-          length: KEYSIZE * 8,
+    return !decrypt
+      ? {
+          // encryption transform
+          async start(controller) {
+            this.iv = new Uint8Array(iv)
+            this.aesKey = await _createKey(aesKey)
+
+            // start an incremental HMAC with SHA-3 which is just H(k || m = (header || payload))
+            this.hash = await createSHA3(256)
+            this.hash.update(macKey)
+            this.hash.update(header)
+
+            controller.enqueue(header)
+            this.totalHashingTime = 0.0
+            this.totalEncryptionTime = 0.0
+          },
+          async transform(chunk, controller) {
+            const blocks = Math.ceil(chunk.byteLength / BLOCKSIZE)
+
+            // encryption mode: encrypt-then-mac
+            var t0 = performance.now()
+            const ct = await window.crypto.subtle.encrypt(
+              _paramSpec(this.iv),
+              this.aesKey,
+              chunk
+            )
+            const tEncrypt = performance.now() - t0
+            this.totalEncryptionTime += tEncrypt
+            const ctUint8Array = new Uint8Array(ct)
+            t0 = performance.now()
+            this.hash.update(ctUint8Array)
+            const tHash = performance.now() - t0
+            this.totalHashingTime += tHash
+
+            controller.enqueue(ctUint8Array)
+
+            // Update the counter
+            var view = new DataView(this.iv.buffer)
+            var value = view.getBigUint64(NONCESIZE, false)
+            value += BigInt(blocks)
+            view.setBigUint64(NONCESIZE, value, false)
+          },
+          async flush(controller) {
+            const tag = this.hash.digest()
+            controller.enqueue(new Uint8Array(Buffer.from(tag, 'hex')))
+            console.log('produced tag: ', tag)
+            console.log(
+              'total time spent encrypting: ',
+              this.totalEncryptionTime
+            )
+            console.log('total time spent hashing: ', this.totalHashingTime)
+          },
         }
-        this.aesKey = await window.crypto.subtle.importKey(
-          'raw',
-          aesKey,
-          keySpec,
-          true,
-          ['encrypt', 'decrypt']
-        )
+      : {
+          // decryption transform
+          async start(controller) {
+            this.iv = new Uint8Array(iv)
+            this.aesKey = await _createKey(aesKey)
 
-        this.iv = new Uint8Array(iv)
+            // start an incremental HMAC with SHA-3 which is just H(k || m = (header || payload))
+            this.hash = await createSHA3(256)
+            this.hash.update(macKey)
+            this.hash.update(header)
 
-        // Start an incremental HMAC with SHA-3 which is just H(k || m = (header || payload))
-        this.hash = await createSHA3(256)
-        this.hash.update(macKey)
-        this.hash.update(header)
+            // for decryption we need some extra bookkeeping
+            // keep track of the previous ct and iv and the last
+            // 32 bytes seen in the ciphertext stream
+            this.previousCt = this.previousIv = undefined
+            this.tag = undefined
+            // true if the tag was split among the last two blocks
+            this.tagSplit = false
+          },
+          async transform(chunk, controller) {
+            const blocks = Math.ceil(chunk.byteLength / BLOCKSIZE)
 
-        if (decrypt) {
-          // for decryption we need some extra bookkeeping
-          // keep track of the previous ct and iv and the last
-          // 32 bytes seen in the ciphertext stream
-          ;[this.previousCt, this.previousIv, this.tag, this.tagLocation] = [
-            undefined,
-            undefined,
-            undefined,
-            TagLocation.IN_FINAL_BLOCK,
-          ]
-        } else controller.enqueue(header)
-      },
-      async transform(chunk, controller) {
-        const blocks = Math.ceil(chunk.byteLength / BLOCKSIZE)
+            if (chunk.byteLength >= TAGSIZE) {
+              // the tag was not in the previous ciphertext block
+              // it's safe to process it now
+              // i.e. mac-then-decrypt
+              if (this.previousCt?.byteLength > 0) {
+                this.hash.update(this.previousCt)
+                const plain = await window.crypto.subtle.decrypt(
+                  _paramSpec(this.previousIv),
+                  this.aesKey,
+                  this.previousCt
+                )
+                controller.enqueue(new Uint8Array(plain))
+              }
+            } else {
+              // edge case: tag is split across last two blocks
+              // we set the tag and previousCt here otherwise going
+              // to the next round forgets this data
+              this.tagSplit = true
+              const tagBytesInPrevious = TAGSIZE - chunk.byteLength
+              this.tag = [
+                ...this.previousCt.slice(-tagBytesInPrevious),
+                ...chunk,
+              ]
+              this.previousCt = this.previousCt.slice(0, -tagBytesInPrevious)
+            }
 
-        if (decrypt) {
-          if (chunk.byteLength >= TAGSIZE) {
-            // the tag was not in the previous ciphertext block
-            // it's safe to process it now
-            // i.e. mac-then-decrypt
+            // prepare for next round
+            this.previousCt = chunk
+            this.previousIv = new Uint8Array(this.iv)
+
+            // Update the counter
+            var view = new DataView(this.iv.buffer)
+            var value = view.getBigUint64(NONCESIZE, false)
+            value += BigInt(blocks)
+            view.setBigUint64(NONCESIZE, value, false)
+          },
+          async flush(controller) {
+            if (!this.tagSplit) {
+              // the tag was in the final block
+              this.tag = this.previousCt.slice(-TAGSIZE)
+              this.previousCt = this.previousCt.slice(0, -TAGSIZE)
+            }
             if (this.previousCt?.byteLength > 0) {
               this.hash.update(this.previousCt)
               const plain = await window.crypto.subtle.decrypt(
@@ -181,64 +270,14 @@ class Sealer {
               )
               controller.enqueue(new Uint8Array(plain))
             }
-          } else {
-            // edge case: tag is split across last two blocks
-            // we set the tag and previousCt here otherwise going
-            // to the next round forgets this data
-            this.tagLocation = TagLocation.IN_FINAL_TWO_BLOCKS
-            const tagBytesInPrevious = TAGSIZE - chunk.byteLength
-            this.tag = [...this.previousCt.slice(-tagBytesInPrevious), ...chunk]
-            this.previousCt = this.previousCt.slice(0, -tagBytesInPrevious)
-          }
-          // prepare for next round
-          this.previousCt = chunk
-          this.previousIv = new Uint8Array(this.iv)
-        } else {
-          // encryption mode: encrypt-then-mac
-          const ct = await window.crypto.subtle.encrypt(
-            _paramSpec(this.iv),
-            this.aesKey,
-            chunk
-          )
-          const ctUint8Array = new Uint8Array(ct)
-          this.hash.update(ctUint8Array)
-          controller.enqueue(ctUint8Array)
+            const found = Buffer.from(this.tag).toString('hex')
+            const tag = this.hash.digest()
+            console.log('tag found in stream: ', found)
+            console.log('produced tag: ', tag)
+            if (found.normalize() != tag.normalize())
+              controller.error(new Error('tags do not match'))
+          },
         }
-
-        // Update the counter
-        var view = new DataView(this.iv.buffer)
-        var value = view.getBigUint64(NONCESIZE, false)
-        value += BigInt(blocks)
-        view.setBigUint64(NONCESIZE, value, false)
-      },
-      async flush(controller) {
-        if (decrypt) {
-          if (TagLocation.IN_FINAL_BLOCK) {
-            this.tag = this.previousCt.slice(-TAGSIZE)
-            this.previousCt = this.previousCt.slice(0, -TAGSIZE)
-          }
-          if (this.previousCt?.byteLength > 0) {
-            this.hash.update(this.previousCt)
-            const plain = await window.crypto.subtle.decrypt(
-              _paramSpec(this.previousIv),
-              this.aesKey,
-              this.previousCt
-            )
-            controller.enqueue(new Uint8Array(plainUint8Array))
-          }
-          const found = Buffer.from(this.tag).toString('hex')
-          const tag = this.hash.digest()
-          console.log('tag found in stream: ', found)
-          console.log('produced tag: ', tag)
-          if (found.normalize() != tag.normalize())
-            controller.error(new Error('tags do not match'))
-        } else {
-          const tag = this.hash.digest()
-          controller.enqueue(new Uint8Array(Buffer.from(tag, 'hex')))
-          console.log('produced tag: ', tag)
-        }
-      },
-    }
   }
 }
 
