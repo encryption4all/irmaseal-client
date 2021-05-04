@@ -9,8 +9,10 @@ const DEFAULT_CHUNK_SIZE = 16 * 1024 // 16 KiB
 // Encryption constants
 const ALGO = 'AES-CTR'
 const KEYSIZE = 32
-const BLOCKSIZE = (IVSIZE = 16)
-const NONCESIZE = (COUNTERSIZE = 8)
+const BLOCKSIZE = 16
+const IVSIZE = 16
+const NONCESIZE = 8
+const COUNTERSIZE = 8
 const TAGSIZE = 32
 
 /**
@@ -33,6 +35,28 @@ function chunkedFileStream(
       } else {
         offset += bytesRead.byteLength
         controller.enqueue(new Uint8Array(bytesRead, 0, bytesRead.byteLength))
+      }
+    },
+  })
+}
+
+// experimental
+function _chunkedFileStream(
+  file,
+  { offset = 0, chunkSize = DEFAULT_CHUNK_SIZE }
+) {
+  return new ReadableStream({
+    type: 'bytes',
+    async pull(controller) {
+      let view = controller.byobRequest.view
+      view = new Uint8Array(
+        await file.slice(offset, offset + view.byteLength).arrayBuffer()
+      )
+      if (view.byteLength > 0) {
+        offset += view.byteLength
+        controller.byobRequest.respond(view.byteLength)
+      } else {
+        controller.close()
       }
     },
   })
@@ -123,12 +147,11 @@ const _createKey = async (key) => {
 }
 
 /**
- * SealTransform, class of which instances can be used as parameter
- * to new Transform.
+ * Sealer, class of which instances can be used as parameter to new TransformStream.
  */
 class Sealer {
   /**
-   * Constructs a new intsance of SealTransform.
+   * Constructs a new intsance of Sealer/Unsealer.
    * @param {Object} obj - SealTransform options.
    * @param {Uint8Array} obj.macKey - the MAC key.
    * @param {Uint8Array} obj.aesKey - the AES encryption key.

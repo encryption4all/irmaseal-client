@@ -20,9 +20,7 @@ var libConfig = {
           loader: 'babel-loader',
           options: {
             presets: ['@babel/preset-env'],
-            plugins: [
-              '@babel/plugin-transform-runtime',
-            ],
+            plugins: ['@babel/plugin-transform-runtime'],
           },
         },
       },
@@ -52,7 +50,7 @@ var exampleConfig = {
   name: 'examples',
   mode: webpackMode,
   entry: {
-    enc: './examples/browser.js',
+    string: './examples/string.js',
     file: './examples/file.js',
     polyfill: [
       'core-js/stable',
@@ -71,7 +69,10 @@ var exampleConfig = {
     new CleanWebpackPlugin({
       cleanOnceBeforeBuildPatterns: ['example_**'],
     }),
-    new HtmlWebpackPlugin({ filename: 'example_enc.html', chunks: ['enc'] }),
+    new HtmlWebpackPlugin({
+      filename: 'example_string.html',
+      chunks: ['polyfill', 'string'],
+    }),
     new HtmlWebpackPlugin({
       filename: 'example_file.html',
       template: './examples/file.html',
