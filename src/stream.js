@@ -16,45 +16,26 @@ const COUNTERSIZE = 8
 const TAGSIZE = 32
 
 /**
- * Creates a ReadableStream that tries to take DEFAULT_CHUNK_SIZE bytes
- * of data from the underlying sink till the sink is exhausted.
+ * Creates a ReadableStream that reponds to BYOB requests
+ * (views of particular sizes to be filled).
+ * If no view is given, DEFAULT_CHUNK_SIZE bytes are read
+ * from the underlying sink till the sink is exhausted.
  * @param {File} file - file source to read from.
- * @param {number} chunkSize - the desired internal buffer.
  */
-function chunkedFileStream(
-  file,
-  { offset = 0, chunkSize = DEFAULT_CHUNK_SIZE }
-) {
-  return new ReadableStream({
-    async pull(controller) {
-      const bytesRead = await file
-        .slice(offset, offset + chunkSize)
-        .arrayBuffer()
-      if (bytesRead.byteLength === 0) {
-        controller.close()
-      } else {
-        offset += bytesRead.byteLength
-        controller.enqueue(new Uint8Array(bytesRead, 0, bytesRead.byteLength))
-      }
-    },
-  })
-}
-
-// experimental
-function _chunkedFileStream(
-  file,
-  { offset = 0, chunkSize = DEFAULT_CHUNK_SIZE }
-) {
+function chunkedFileStream(file) {
+  var offset = 0
   return new ReadableStream({
     type: 'bytes',
+    autoAllocateChunkSize: DEFAULT_CHUNK_SIZE,
     async pull(controller) {
       let view = controller.byobRequest.view
-      view = new Uint8Array(
-        await file.slice(offset, offset + view.byteLength).arrayBuffer()
-      )
-      if (view.byteLength > 0) {
-        offset += view.byteLength
-        controller.byobRequest.respond(view.byteLength)
+      let read = await file
+        .slice(offset, offset + view.byteLength)
+        .arrayBuffer()
+      view.set(new Uint8Array(read), 0, read.byteLength)
+      if (read.byteLength > 0) {
+        offset += read.byteLength
+        controller.byobRequest.respond(read.byteLength)
       } else {
         controller.close()
       }

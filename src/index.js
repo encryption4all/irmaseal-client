@@ -72,25 +72,29 @@ class Client {
 
   /**
    * Extract Metadata from a ReadableStream.
-   * @param {ReadableStream} readable
-   * @return {{metadata: Metadata, header: Uint8Array}}
+   * Reads the stream no further then needed to extract the metadata.
+   * @async
+   * @param {ReadableStream} - readablestream.
+   * @returns {Object} - result.
+   * @returns {Metadata} - result.metadata - the Metadata object extracted from the stream.
+   * @returns {Uint8Array} - result.header - the raw header bytes.
    */
   async extractMetadata(readable) {
-    let reader = readable.getReader()
+    let reader = readable.getReader({ mode: 'byob' })
     let metadataReader = new this.module.MetadataReader()
 
-    var done, chunk, metadata, header
-    while (true) {
-      ;({ value: chunk, done: done } = await reader.read())
-      ;({
-        header: header,
-        metadata: metadata,
-        done: done,
-      } = metadataReader.feed(chunk))
-      if (done) break
-    }
-    reader.releaseLock()
+    var header, metadata, done
 
+    let preamble_buf = new Uint8Array(metadataReader.safe_write_size)
+    ;({ value: preamble_buf, done } = await reader.read(preamble_buf))
+    metadataReader.feed(preamble_buf)
+
+    let metadata_buf = new Uint8Array(metadataReader.safe_write_size)
+    ;({ value: metadata_buf } = await reader.read(metadata_buf))
+    ;({ header, metadata, done } = metadataReader.feed(metadata_buf))
+
+    reader.releaseLock()
+    if (!done) return new Error('metadata not found')
     return { metadata: metadata, header: header }
   }
 

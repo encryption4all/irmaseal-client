@@ -23,6 +23,7 @@ const listener = async (event) => {
 
   const decrypt = event.srcElement.classList.contains('decrypt')
   const [inFile] = event.srcElement.files
+  const readableStream = chunkedFileStream(inFile)
 
   var header, meta, keys
 
@@ -33,8 +34,7 @@ const listener = async (event) => {
     }
     ;({ header, metadata: meta, keys } = client.createMetadata(attribute)) // = MetadataCreateResult
   } else {
-    const metadataStream = chunkedFileStream(inFile, { chunkSize: 512 }) // read in small chunks
-    ;({ header, metadata: meta } = await client.extractMetadata(metadataStream)) // = MetadataReaderResult
+    ;({ header, metadata: meta } = await client.extractMetadata(readableStream)) // = MetadataReaderResult
     let usk = await client
       .requestToken(meta.to_json().identity.attribute)
       .then((token) =>
@@ -48,11 +48,6 @@ const listener = async (event) => {
   console.log('aes: ', keys.aes_key)
   console.log('mac: ', keys.mac_key)
   console.log('header: ', header)
-
-  const readableStream = toReadable(
-    chunkedFileStream(inFile, { offset: decrypt ? header.byteLength : 0 })
-  )
-
   const outFileName = decrypt
     ? inFile.name.replace('.enc', '')
     : `${inFile.name}.enc`
@@ -66,7 +61,7 @@ const listener = async (event) => {
 
   const t0 = performance.now()
 
-  await readableStream
+  await toReadable(readableStream)
     .pipeThrough(
       new TransformStream(
         new Sealer({
