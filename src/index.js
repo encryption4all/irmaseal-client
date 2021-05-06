@@ -33,6 +33,7 @@ class Client {
   /**
    * Loads the WASM module.
    * Needs to be run before calling either extractIdentity, encrypt or decrypt.
+   * @async
    */
   async loadModule() {
     this.module = await import('@e4a/irmaseal-wasm-bindings')
@@ -40,6 +41,7 @@ class Client {
 
   /**
    * Creates a new client to interact with a PKG at the given url.
+   * @static
    * @param {String} url - url of the PKG with which the client connects, required.
    * @param {Boolean} [loadModule=true] - indicates whether the client will do bytestream operation, optional.
    * @param {Object} [localStorage], localStorage API object, optional.
@@ -103,6 +105,8 @@ class Client {
 
   /**
    * Requests a session token for an IRMA identity at the PKG.
+   * @async
+   * @protected
    * @param {Attribute}, attribute to retrieve session token for.
    * @return {Promise<String>} session token.
    */
@@ -154,6 +158,7 @@ class Client {
   /**
    * Retrieves a session token for a given identity by a single attribute { type, value }.
    * Uses the localStorage passed to client.build() as a cache otherwise a new token is requested at the PKG.
+   * @async
    * @param {Attribute} attribute.
    * @returns {Promise<String>}, a promise of a token.
    */

@@ -26,6 +26,7 @@ export type Attribute = {
 export class Client {
     /**
      * Creates a new client to interact with a PKG at the given url.
+     * @static
      * @param {String} url - url of the PKG with which the client connects, required.
      * @param {Boolean} [loadModule=true] - indicates whether the client will do bytestream operation, optional.
      * @param {Object} [localStorage], localStorage API object, optional.
@@ -47,6 +48,7 @@ export class Client {
     /**
      * Loads the WASM module.
      * Needs to be run before calling either extractIdentity, encrypt or decrypt.
+     * @async
      */
     loadModule(): Promise<void>;
     /**
@@ -57,19 +59,22 @@ export class Client {
     createMetadata(attribute: any): MetadataCreateResult;
     /**
      * Extract Metadata from a ReadableStream.
-     * @param {ReadableStream} readable
-     * @return {{metadata: Metadata, header: Uint8Array}}
+     * Reads the stream no further then needed to extract the metadata.
+     * @async
+     * @param {ReadableStream} - readablestream.
+     * @returns {Object} - result.
+     * @returns {Metadata} - result.metadata - the Metadata object extracted from the stream.
+     * @returns {Uint8Array} - result.header - the raw header bytes.
      */
-    extractMetadata(readable: ReadableStream): {
-        metadata: Metadata;
-        header: Uint8Array;
-    };
+    extractMetadata(readable: any): any;
     /**
      * Requests a session token for an IRMA identity at the PKG.
+     * @async
+     * @protected
      * @param {Attribute}, attribute to retrieve session token for.
      * @return {Promise<String>} session token.
      */
-    _requestToken(attribute: any): Promise<string>;
+    protected _requestToken(attribute: any): Promise<string>;
     /**
      * Request a user private key from the PKG using a session token and timestamp.
      * @param {String} token, the session token.
@@ -80,6 +85,7 @@ export class Client {
     /**
      * Retrieves a session token for a given identity by a single attribute { type, value }.
      * Uses the localStorage passed to client.build() as a cache otherwise a new token is requested at the PKG.
+     * @async
      * @param {Attribute} attribute.
      * @returns {Promise<String>}, a promise of a token.
      */
