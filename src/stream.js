@@ -47,16 +47,15 @@ function chunkedFileStream(file) {
  * Transforms streams with randomly sized chunked
  * to a stream of chunks containing atleast chunkSize bytes.
  * Only the last chunk is of smaller size.
- * TODO: do not use! There's still a bug in there...
  */
 class Chunker {
   /**
    * Constructs a new chunker.
-   * @param {object} obj - the chunker options.
-   * @param {number} obj.chunkSize - the desired internal buffer, in bytes.
+   * @param {object} [obj] - the chunker options.
+   * @param {number} [obj.chunkSize] - the desired internal buffer, in bytes.
    * @param {number} [obj.offset] - how many bytes to discard of the incoming stream.
    */
-  constructor({ offset = 0, chunkSize = DEFAULT_CHUNK_SIZE }) {
+  constructor({ offset = 0, chunkSize = DEFAULT_CHUNK_SIZE } = {}) {
     return {
       start(controller) {
         this.buf = new ArrayBuffer(chunkSize)
@@ -250,7 +249,7 @@ class Sealer {
             }
 
             // prepare for next round
-            this.previousCt = chunk
+            this.previousCt = new Uint8Array(chunk)
             this.previousIv = new Uint8Array(this.iv)
 
             // Update the counter

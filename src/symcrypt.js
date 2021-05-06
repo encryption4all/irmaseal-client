@@ -28,11 +28,11 @@ async function symcrypt(keys, iv, header, input, decrypt = false) {
   var writerOffset = 0
 
   await new ReadableStream({
+    type: 'bytes',
     pull(controller) {
       controller.enqueue(input.slice(readerOffset))
       controller.close()
     },
-    type: 'bytes',
   })
     .pipeThrough(
       new TransformStream(

@@ -62,6 +62,7 @@ const listener = async (event) => {
   const t0 = performance.now()
 
   await toReadable(readableStream)
+    .pipeThrough(new TransformStream(new Chunker()))
     .pipeThrough(
       new TransformStream(
         new Sealer({
