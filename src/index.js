@@ -83,19 +83,22 @@ class Client {
     let reader = readable.getReader({ mode: 'byob' })
     let metadataReader = new this.module.MetadataReader()
 
-    var header, metadata, done
+    var res, done
+    var buf = new ArrayBuffer(512)
 
-    let preamble_buf = new Uint8Array(metadataReader.safe_write_size)
-    ;({ value: preamble_buf, done } = await reader.read(preamble_buf))
-    metadataReader.feed(preamble_buf)
-
-    let metadata_buf = new Uint8Array(metadataReader.safe_write_size)
-    ;({ value: metadata_buf } = await reader.read(metadata_buf))
-    ;({ header, metadata, done } = metadataReader.feed(metadata_buf))
+    while (true) {
+      let view = new Uint8Array(
+        buf,
+        0,
+        Math.min(metadataReader.safe_write_size, 512)
+      )
+      ;({ value: view, done } = await reader.read(view))
+      res = metadataReader.feed(view)
+      if (res.done || done) break
+    }
 
     reader.releaseLock()
-    if (!done) return new Error('metadata not found')
-    return { metadata: metadata, header: header }
+    return { metadata: res.metadata, header: res.header }
   }
 
   /**
