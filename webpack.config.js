@@ -52,11 +52,6 @@ var exampleConfig = {
   entry: {
     string: './examples/string.js',
     file: './examples/file.js',
-    polyfill: [
-      'core-js/stable',
-      'regenerator-runtime/runtime',
-      'web-streams-polyfill',
-    ],
   },
   output: {
     path: dist,
@@ -71,12 +66,12 @@ var exampleConfig = {
     }),
     new HtmlWebpackPlugin({
       filename: 'example_string.html',
-      chunks: ['polyfill', 'string'],
+      chunks: ['string'],
     }),
     new HtmlWebpackPlugin({
       filename: 'example_file.html',
       template: './examples/file.html',
-      chunks: ['polyfill', 'file'],
+      chunks: ['file'],
     }),
   ],
 }

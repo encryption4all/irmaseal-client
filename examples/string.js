@@ -1,3 +1,5 @@
+import 'web-streams-polyfill'
+
 import {
   Client,
   symcrypt,
