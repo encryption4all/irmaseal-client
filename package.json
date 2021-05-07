@@ -1,6 +1,9 @@
 {
   "name": "@e4a/irmaseal-client",
   "version": "0.0.3",
+  "files": [
+    "/src/**"
+  ],
   "main": "src/index.js",
   "types": "src/index.d.ts",
   "license": "MIT",
@@ -35,7 +38,7 @@
   "scripts": {
     "build": "webpack --config-name lib",
     "dev": "webpack --config-name lib --watch & webpack --config-name examples --watch & serve dist",
-    "types": "tsc src/index.js --declaration --allowJs --emitDeclarationOnly --outdir src --skipLibCheck"
+    "types": "rm src/*.d.ts && tsc src/index.js --declaration --allowJs --emitDeclarationOnly --outdir src --skipLibCheck"
   },
   "prettier": {
     "trailingComma": "es5",

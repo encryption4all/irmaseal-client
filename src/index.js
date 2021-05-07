@@ -1,6 +1,10 @@
 const irmaFrontend = require('@privacybydesign/irma-frontend')
-const { Sealer, Chunker, chunkedFileStream } = require('./stream')
-const { symcrypt } = require('./symcrypt')
+const { Sealer, Chunker } = require('./stream')
+const {
+  symcrypt,
+  createFileReadable,
+  createUint8ArrayReadable,
+} = require('./util')
 
 /**
  * @typedef {import('@e4a/irmaseal-wasm-bindings').KeySet} KeySet
@@ -60,7 +64,7 @@ class Client {
   }
 
   /**
-   * Create new Metadata.
+   * Create a new Metadata object.
    * @param {Attribute} attribute.
    * @return {MetadataCreateResult} metadata.
    */
@@ -106,7 +110,6 @@ class Client {
   /**
    * Requests a session token for an IRMA identity at the PKG.
    * @async
-   * @protected
    * @param {Attribute}, attribute to retrieve session token for.
    * @return {Promise<String>} session token.
    */
@@ -132,27 +135,6 @@ class Client {
       })
       .start()
       .then((map) => map.sessionToken)
-  }
-
-  /**
-   * Request a user private key from the PKG using a session token and timestamp.
-   * @param {String} token, the session token.
-   * @param {Number} timestamp, the UNIX timestamp.
-   * @returns {Promise<String>}, user private key.
-   */
-  requestKey(token, timestamp) {
-    let url = this.url
-    return new Promise(function (resolve, reject) {
-      fetch(`${url}/v1/request/${token}/${timestamp.toString()}`)
-        .then((resp) => {
-          return resp.status !== 200 ? reject(new Error('not ok')) : resp.json()
-        })
-        .then((json) => {
-          return json.status !== 'DONE_VALID'
-            ? reject(new Error('not valid'))
-            : resolve(json.key)
-        })
-    })
   }
 
   /**
@@ -191,12 +173,55 @@ class Client {
     }
     return token
   }
+
+  /**
+   * Request a user private key from the PKG using a session token and timestamp.
+   * @param {String} token, the session token.
+   * @param {Number} timestamp, the UNIX timestamp.
+   * @returns {Promise<String>}, user private key.
+   */
+  requestKey(token, timestamp) {
+    let url = this.url
+    return new Promise(function (resolve, reject) {
+      fetch(`${url}/v1/request/${token}/${timestamp.toString()}`)
+        .then((resp) => {
+          return resp.status !== 200 ? reject(new Error('not ok')) : resp.json()
+        })
+        .then((json) => {
+          return json.status !== 'DONE_VALID'
+            ? reject(new Error('not valid'))
+            : resolve(json.key)
+        })
+    })
+  }
+
+  /**
+   * Request a user private key from the PKG using a session token and timestamp.
+   * @param {String} token, the session token.
+   * @param {Number} timestamp, the UNIX timestamp.
+   * @returns {Promise<String>}, user private key.
+   */
+  requestKey(token, timestamp) {
+    let url = this.url
+    return new Promise(function (resolve, reject) {
+      fetch(`${url}/v1/request/${token}/${timestamp.toString()}`)
+        .then((resp) => {
+          return resp.status !== 200 ? reject(new Error('not ok')) : resp.json()
+        })
+        .then((json) => {
+          return json.status !== 'DONE_VALID'
+            ? reject(new Error('not valid'))
+            : resolve(json.key)
+        })
+    })
+  }
 }
 
 module.exports = {
   Client,
   Sealer,
   Chunker,
-  chunkedFileStream,
   symcrypt,
+  createFileReadable,
+  createUint8ArrayReadable,
 }

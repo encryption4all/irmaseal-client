@@ -52,7 +52,7 @@ export class Client {
      */
     loadModule(): Promise<void>;
     /**
-     * Create new Metadata.
+     * Create a new Metadata object.
      * @param {Attribute} attribute.
      * @return {MetadataCreateResult} metadata.
      */
@@ -70,18 +70,10 @@ export class Client {
     /**
      * Requests a session token for an IRMA identity at the PKG.
      * @async
-     * @protected
      * @param {Attribute}, attribute to retrieve session token for.
      * @return {Promise<String>} session token.
      */
-    protected _requestToken(attribute: any): Promise<string>;
-    /**
-     * Request a user private key from the PKG using a session token and timestamp.
-     * @param {String} token, the session token.
-     * @param {Number} timestamp, the UNIX timestamp.
-     * @returns {Promise<String>}, user private key.
-     */
-    requestKey(token: string, timestamp: number): Promise<string>;
+    _requestToken(attribute: any): Promise<string>;
     /**
      * Retrieves a session token for a given identity by a single attribute { type, value }.
      * Uses the localStorage passed to client.build() as a cache otherwise a new token is requested at the PKG.
@@ -90,9 +82,17 @@ export class Client {
      * @returns {Promise<String>}, a promise of a token.
      */
     requestToken(attribute: any): Promise<string>;
+    /**
+     * Request a user private key from the PKG using a session token and timestamp.
+     * @param {String} token, the session token.
+     * @param {Number} timestamp, the UNIX timestamp.
+     * @returns {Promise<String>}, user private key.
+     */
+    requestKey(token: string, timestamp: number): Promise<string>;
 }
 import { Sealer } from "./stream";
 import { Chunker } from "./stream";
-import { chunkedFileStream } from "./stream";
-import { symcrypt } from "./symcrypt";
-export { Sealer, Chunker, chunkedFileStream, symcrypt };
+import { symcrypt } from "./util";
+import { createFileReadable } from "./util";
+import { createUint8ArrayReadable } from "./util";
+export { Sealer, Chunker, symcrypt, createFileReadable, createUint8ArrayReadable };

@@ -4,7 +4,8 @@ const Buffer = require('buffer/').Buffer
 // TODO: get constants from rust
 // TODO: avoid more copies
 
-const DEFAULT_CHUNK_SIZE = 16 * 1024 // 16 KiB
+// Process in 128 KiB chunks
+const DEFAULT_CHUNK_SIZE = 128 * 1024
 
 // Encryption constants
 const ALGO = 'AES-CTR'
@@ -14,34 +15,6 @@ const IVSIZE = 16
 const NONCESIZE = 8
 const COUNTERSIZE = 8
 const TAGSIZE = 32
-
-/**
- * Creates a ReadableStream that reponds to BYOB requests
- * (views of particular sizes to be filled).
- * If no view is given, DEFAULT_CHUNK_SIZE bytes are read
- * from the underlying sink till the sink is exhausted.
- * @param {File} file - file source to read from.
- */
-function chunkedFileStream(file) {
-  var offset = 0
-  return new ReadableStream({
-    type: 'bytes',
-    autoAllocateChunkSize: DEFAULT_CHUNK_SIZE,
-    async pull(controller) {
-      let view = controller.byobRequest.view
-      let read = await file
-        .slice(offset, offset + view.byteLength)
-        .arrayBuffer()
-      view.set(new Uint8Array(read), 0, read.byteLength)
-      if (read.byteLength > 0) {
-        offset += read.byteLength
-        controller.byobRequest.respond(read.byteLength)
-      } else {
-        controller.close()
-      }
-    },
-  })
-}
 
 /**
  * Transforms streams with randomly sized chunked
@@ -287,5 +260,6 @@ class Sealer {
 module.exports = {
   Sealer,
   Chunker,
-  chunkedFileStream,
+  TAGSIZE,
+  DEFAULT_CHUNK_SIZE,
 }

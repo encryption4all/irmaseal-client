@@ -1,11 +1,6 @@
 import 'web-streams-polyfill'
 
-import {
-  Client,
-  Sealer,
-  Chunker,
-  chunkedFileStream,
-} from './../dist/irmaseal-client'
+import { Client, Sealer, createFileReadable } from './../dist/irmaseal-client'
 
 import {
   createReadableStreamWrapper,
@@ -23,7 +18,7 @@ const listener = async (event) => {
 
   const decrypt = event.srcElement.classList.contains('decrypt')
   const [inFile] = event.srcElement.files
-  const readableStream = chunkedFileStream(inFile)
+  const readable = createFileReadable(inFile)
 
   var header, meta, keys
 
@@ -34,7 +29,7 @@ const listener = async (event) => {
     }
     ;({ header, metadata: meta, keys } = client.createMetadata(attribute)) // = MetadataCreateResult
   } else {
-    ;({ header, metadata: meta } = await client.extractMetadata(readableStream)) // = MetadataReaderResult
+    ;({ header, metadata: meta } = await client.extractMetadata(readable)) // = MetadataReaderResult
     let usk = await client
       .requestToken(meta.to_json().identity.attribute)
       .then((token) =>
@@ -48,6 +43,7 @@ const listener = async (event) => {
   console.log('aes: ', keys.aes_key)
   console.log('mac: ', keys.mac_key)
   console.log('header: ', header)
+
   const outFileName = decrypt
     ? inFile.name.replace('.enc', '')
     : `${inFile.name}.enc`
@@ -61,8 +57,7 @@ const listener = async (event) => {
 
   const t0 = performance.now()
 
-  await toReadable(readableStream)
-    .pipeThrough(new TransformStream(new Chunker()))
+  await toReadable(readable)
     .pipeThrough(
       new TransformStream(
         new Sealer({
