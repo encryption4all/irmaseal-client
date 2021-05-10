@@ -30,7 +30,12 @@ async function symcrypt(keys, iv, header, input, decrypt = false) {
   var readerOffset = decrypt ? header.byteLength : 0
   var writerOffset = 0
 
-  await createUint8ArrayReadable(input, readerOffset)
+  await new ReadableStream({
+    pull(controller) {
+      controller.enqueue(input.slice(readerOffset))
+      controller.close()
+    },
+  })
     .pipeThrough(
       new TransformStream(
         new Sealer({
