@@ -1,5 +1,4 @@
 import 'web-streams-polyfill'
-
 import { Client, Sealer, createFileReadable } from './../dist/irmaseal-client'
 
 import {
@@ -14,7 +13,7 @@ const toReadable = createReadableStreamWrapper(ReadableStream)
 const toWritable = createWritableStreamWrapper(WritableStream)
 
 const listener = async (event) => {
-  let client = await Client.build('https://qrona.info/pkg', true, null)
+  let client = await Client.build('https://irmacrypt.nl/pkg')
 
   const decrypt = event.srcElement.classList.contains('decrypt')
   const [inFile] = event.srcElement.files

@@ -7,13 +7,6 @@ const {
 } = require('./util')
 
 /**
- * @typedef {import('@e4a/irmaseal-wasm-bindings').KeySet} KeySet
- * @typedef {import('@e4a/irmaseal-wasm-bindings').Metadata} Metadata
- * @typedef {import('@e4a/irmaseal-wasm-bindings').MetadataCreateResult} MetadataCreateResult
- * @typedef {import('@e4a/irmaseal-wasm-bindings').MetadataReaderResult} MetadataReaderResult
- */
-
-/**
  * @typedef {Object} Attribute
  * @property {string} type - attribute type.
  * @property {string} [value] - attribute value.
@@ -27,11 +20,10 @@ class Client {
    * @param {String} params, parameters received from /parameters of PKG.
    * @param {Object} module, the imported WASM module.
    */
-  constructor(url, params, module, localStorage) {
+  constructor(url, params, module) {
     this.url = url
     this.params = params
     this.module = module
-    this.localStorage = localStorage
   }
 
   /**
@@ -51,14 +43,10 @@ class Client {
    * @param {Object} [localStorage], localStorage API object, optional.
    * @returns {Promise<Client>} client, an initialized client.
    */
-  static async build(url, loadModule = true, localStorage) {
+  static async build(url, loadModule = true) {
     const resp = await fetch(`${url}/v1/parameters`)
     const params = JSON.parse(await resp.text())
-    const ls = localStorage || undefined
-    // TODO: fallback to window.localStorage
-    // || window.localStorage || undefined
-    // doesn't work for now since window.localStorage's api is slightly different (i.e, getItem vs get)
-    const client = new Client(url, params, undefined, ls)
+    const client = new Client(url, params, undefined)
     if (loadModule) await client.loadModule()
     return client
   }
@@ -145,12 +133,11 @@ class Client {
    * @returns {Promise<String>}, a promise of a token.
    */
   async requestToken(attribute) {
-    if (!this.localStorage) return this._requestToken(attribute)
+    if (!window.localStorage) return this._requestToken(attribute)
 
     let token
     const serializedAttr = JSON.stringify(attribute)
-    const cacheObj = await this.localStorage.get(serializedAttr)
-    const cached = cacheObj[serializedAttr]
+    const cached = JSON.parse(window.localStorage.getItem(serializedAttr))
 
     if (
       !cached ||
@@ -164,9 +151,13 @@ class Client {
       token = await this._requestToken(attribute)
       const t = new Date(Date.now())
       const validUntil = t.setSeconds(t.getSeconds() + this.params.max_age)
-      this.localStorage.set({
-        [serializedAttr]: { token: token, validUntil: validUntil },
-      })
+      window.localStorage.setItem(
+        serializedAttr,
+        JSON.stringify({
+          token: token,
+          validUntil: validUntil,
+        })
+      )
     } else {
       console.log('Cache hit: ', cached)
       token = cached.token
@@ -179,6 +170,9 @@ class Client {
    * @param {String} token, the session token.
    * @param {Number} timestamp, the UNIX timestamp.
    * @returns {Promise<String>}, user private key.
+   * TODO: the session remains VALID for 5 minutes after the user has authenticated
+   * This means we can store the token for 5 minutes after receiving 200.
+   * TODO: cache the key for this token-timestamp combination.
    */
   requestKey(token, timestamp) {
     let url = this.url

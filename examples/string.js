@@ -1,5 +1,4 @@
 import 'web-streams-polyfill'
-
 import {
   Client,
   symcrypt,
@@ -8,7 +7,7 @@ import {
 
 window.onload = async () => {
   // Create a client
-  const client = await Client.build('https://qrona.info/pkg')
+  const client = await Client.build('https://irmacrypt.nl/pkg')
   console.log('client initialized')
 
   // Ask for an email address attribute to encrypt under
