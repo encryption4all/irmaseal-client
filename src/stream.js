@@ -1,9 +1,6 @@
 const { createSHA3 } = require('hash-wasm')
 const Buffer = require('buffer/').Buffer
 
-// TODO: get constants from rust
-// TODO: avoid more copies
-
 // Process in 128 KiB chunks
 const DEFAULT_CHUNK_SIZE = 128 * 1024
 
@@ -133,26 +130,18 @@ class Sealer {
             this.hash.update(header)
 
             controller.enqueue(header)
-            this.totalHashingTime = 0.0
-            this.totalEncryptionTime = 0.0
           },
           async transform(chunk, controller) {
             const blocks = Math.ceil(chunk.byteLength / BLOCKSIZE)
 
             // encryption mode: encrypt-then-mac
-            var t0 = performance.now()
             const ct = await window.crypto.subtle.encrypt(
               _paramSpec(this.iv),
               this.aesKey,
               chunk
             )
-            const tEncrypt = performance.now() - t0
-            this.totalEncryptionTime += tEncrypt
             const ctUint8Array = new Uint8Array(ct)
-            t0 = performance.now()
             this.hash.update(ctUint8Array)
-            const tHash = performance.now() - t0
-            this.totalHashingTime += tHash
 
             controller.enqueue(ctUint8Array)
 
@@ -166,11 +155,6 @@ class Sealer {
             const tag = this.hash.digest()
             controller.enqueue(new Uint8Array(Buffer.from(tag, 'hex')))
             console.log('produced tag: ', tag)
-            console.log(
-              'total time spent encrypting: ',
-              this.totalEncryptionTime
-            )
-            console.log('total time spent hashing: ', this.totalHashingTime)
           },
         }
       : {
@@ -260,6 +244,8 @@ class Sealer {
 module.exports = {
   Sealer,
   Chunker,
+  IVSIZE,
+  KEYSIZE,
   TAGSIZE,
   DEFAULT_CHUNK_SIZE,
 }

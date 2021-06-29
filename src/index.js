@@ -1,10 +1,12 @@
-const irmaFrontend = require('@privacybydesign/irma-frontend')
 const { Sealer, Chunker } = require('./stream')
+const { KEYSIZE, IVSIZE, TAGSIZE, DEFAULT_CHUNK_SIZE } = require('./stream')
 const {
   symcrypt,
   createFileReadable,
   createUint8ArrayReadable,
 } = require('./util')
+
+const CachePlugin = require('./cache')
 
 /**
  * @typedef {Object} Attribute
@@ -19,36 +21,47 @@ class Client {
    * @param {String} url, url of the PKG.
    * @param {String} params, parameters received from /parameters of PKG.
    * @param {Object} module, the imported WASM module.
+   * @param {Object} constants, encryption constants from the rust side.
    */
-  constructor(url, params, module) {
+  constructor(url, params, module, constants) {
     this.url = url
     this.params = params
     this.module = module
-  }
-
-  /**
-   * Loads the WASM module.
-   * Needs to be run before calling either extractIdentity, encrypt or decrypt.
-   * @async
-   */
-  async loadModule() {
-    this.module = await import('@e4a/irmaseal-wasm-bindings')
+    this.constants = constants
   }
 
   /**
    * Creates a new client to interact with a PKG at the given url.
    * @static
    * @param {String} url - url of the PKG with which the client connects, required.
-   * @param {Boolean} [loadModule=true] - indicates whether the client will do bytestream operation, optional.
    * @param {Object} [localStorage], localStorage API object, optional.
    * @returns {Promise<Client>} client, an initialized client.
    */
-  static async build(url, loadModule = true) {
+  static async build(url) {
     const resp = await fetch(`${url}/v1/parameters`)
     const params = JSON.parse(await resp.text())
-    const client = new Client(url, params, undefined)
-    if (loadModule) await client.loadModule()
-    return client
+    const module = await import('@e4a/irmaseal-wasm-bindings')
+    const constants = module.constants()
+    const {
+      key_size,
+      iv_size,
+      block_size,
+      mac_size,
+      symmetric_id,
+      verifier_id,
+    } = constants
+
+    // Validate all constants to match expected values or error
+    if (key_size !== KEYSIZE || iv_size !== IVSIZE || mac_size !== TAGSIZE)
+      throw new Error('key, nonce or tag has wrong size')
+    if (symmetric_id !== 'AES256-CTR64BE' || verifier_id !== 'SHA3-256')
+      throw new Error('unsupported aead encryption parameters')
+    if (block_size !== DEFAULT_CHUNK_SIZE)
+      throw new Error(
+        'mismatch in chunk size to be encrypted by symmetric cipher'
+      )
+
+    return new Client(url, params, module, constants)
   }
 
   /**
@@ -69,7 +82,7 @@ class Client {
    * Reads the stream no further then needed to extract the metadata.
    * @async
    * @param {ReadableStream} - readablestream.
-   * @returns {Object} - result.
+   * @returns {Promise<Object>} - result.
    * @returns {Metadata} - result.metadata - the Metadata object extracted from the stream.
    * @returns {Uint8Array} - result.header - the raw header bytes.
    */
@@ -95,127 +108,68 @@ class Client {
     return { metadata: res.metadata, header: res.header }
   }
 
-  /**
-   * Requests a session token for an IRMA identity at the PKG.
-   * @async
-   * @param {Attribute}, attribute to retrieve session token for.
-   * @return {Promise<String>} session token.
+  createTransformStream(options) {
+    return new TransformStream(new Sealer(options))
+  }
+
+  createChunker() {
+    return new Chunker({ chunkSize: this.constants.block_size })
+  }
+
+  symcrypt(options) {
+    return symcrypt(options)
+  }
+
+  createFileReadable(file, options = {}) {
+    return createFileReadable(file, options)
+  }
+
+  createUint8ArrayReadable(array, options = {}) {
+    return createUint8ArrayReadable(array, options)
+  }
+
+  /*
+   * Returns a session at the PKG.
+   * Result of the session is the user secret key (USK).
+   * @param {Attribute} identity.
+   * @param {number} timestamp.
    */
-  async _requestToken(attribute) {
-    return irmaFrontend
-      .newPopup({
-        session: {
-          url: this.url,
-          start: {
-            url: (o) => `${o.url}/v1/request`,
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              attribute: attribute,
-            }),
-          },
-          mapping: {
-            sessionPtr: (r) => JSON.parse(r.qr),
-            sessionToken: (r) => r.token,
-          },
-          result: false,
+  createPKGSession(identity, timestamp) {
+    return {
+      identity: identity,
+      timestamp: timestamp,
+      maxAge: this.params.max_age,
+      url: this.url,
+      start: {
+        url: (o) => `${o.url}/v1/request`,
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          attribute: identity,
+        }),
+      },
+      state: { serverSentEvents: false },
+      mapping: {
+        sessionPtr: (r) => JSON.parse(r.qr),
+      },
+      result: {
+        url: (o, { sessionToken: token }) =>
+          `${o.url}/v1/request/${token}/${o.timestamp.toString()}`,
+        parseResponse: (r) => {
+          return new Promise((resolve, reject) => {
+            if (r.status != '200') reject('not ok')
+            r.json().then((json) => {
+              if (json.status !== 'DONE_VALID') reject('not done and valid')
+              resolve(json.key)
+            })
+          })
         },
-      })
-      .start()
-      .then((map) => map.sessionToken)
-  }
-
-  /**
-   * Retrieves a session token for a given identity by a single attribute { type, value }.
-   * Uses the localStorage passed to client.build() as a cache otherwise a new token is requested at the PKG.
-   * @async
-   * @param {Attribute} attribute.
-   * @returns {Promise<String>}, a promise of a token.
-   */
-  async requestToken(attribute) {
-    if (!window.localStorage) return this._requestToken(attribute)
-
-    let token
-    const serializedAttr = JSON.stringify(attribute)
-    const cached = JSON.parse(window.localStorage.getItem(serializedAttr))
-
-    if (
-      !cached ||
-      Object.keys(cached).length === 0 ||
-      (cached.validUntil && Date.now() >= cached.validUntil)
-    ) {
-      console.log(
-        'Cache miss or token not valid anymore.\nRequesting fresh token for: ',
-        attribute
-      )
-      token = await this._requestToken(attribute)
-      const t = new Date(Date.now())
-      const validUntil = t.setSeconds(t.getSeconds() + this.params.max_age)
-      window.localStorage.setItem(
-        serializedAttr,
-        JSON.stringify({
-          token: token,
-          validUntil: validUntil,
-        })
-      )
-    } else {
-      console.log('Cache hit: ', cached)
-      token = cached.token
+      },
     }
-    return token
-  }
-
-  /**
-   * Request a user private key from the PKG using a session token and timestamp.
-   * @param {String} token, the session token.
-   * @param {Number} timestamp, the UNIX timestamp.
-   * @returns {Promise<String>}, user private key.
-   * TODO: the session remains VALID for 5 minutes after the user has authenticated
-   * This means we can store the token for 5 minutes after receiving 200.
-   * TODO: cache the key for this token-timestamp combination.
-   */
-  requestKey(token, timestamp) {
-    let url = this.url
-    return new Promise(function (resolve, reject) {
-      fetch(`${url}/v1/request/${token}/${timestamp.toString()}`)
-        .then((resp) => {
-          return resp.status !== 200 ? reject(new Error('not ok')) : resp.json()
-        })
-        .then((json) => {
-          return json.status !== 'DONE_VALID'
-            ? reject(new Error('not valid'))
-            : resolve(json.key)
-        })
-    })
-  }
-
-  /**
-   * Request a user private key from the PKG using a session token and timestamp.
-   * @param {String} token, the session token.
-   * @param {Number} timestamp, the UNIX timestamp.
-   * @returns {Promise<String>}, user private key.
-   */
-  requestKey(token, timestamp) {
-    let url = this.url
-    return new Promise(function (resolve, reject) {
-      fetch(`${url}/v1/request/${token}/${timestamp.toString()}`)
-        .then((resp) => {
-          return resp.status !== 200 ? reject(new Error('not ok')) : resp.json()
-        })
-        .then((json) => {
-          return json.status !== 'DONE_VALID'
-            ? reject(new Error('not valid'))
-            : resolve(json.key)
-        })
-    })
   }
 }
 
 module.exports = {
   Client,
-  Sealer,
-  Chunker,
-  symcrypt,
-  createFileReadable,
-  createUint8ArrayReadable,
+  CachePlugin,
 }

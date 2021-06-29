@@ -1,5 +1,11 @@
 import 'web-streams-polyfill'
-import { Client, Sealer, createFileReadable } from './../dist/irmaseal-client'
+import { Client, CachePlugin } from './../dist/irmaseal-client'
+
+import '@privacybydesign/irma-css'
+
+import * as IrmaCore from '@privacybydesign/irma-core'
+import * as IrmaClient from '@privacybydesign/irma-client'
+import * as IrmaPopup from '@privacybydesign/irma-popup'
 
 import {
   createReadableStreamWrapper,
@@ -17,7 +23,7 @@ const listener = async (event) => {
 
   const decrypt = event.srcElement.classList.contains('decrypt')
   const [inFile] = event.srcElement.files
-  const readable = createFileReadable(inFile)
+  const readable = client.createFileReadable(inFile)
 
   var header, meta, keys
 
@@ -29,11 +35,19 @@ const listener = async (event) => {
     ;({ header, metadata: meta, keys } = client.createMetadata(attribute)) // = MetadataCreateResult
   } else {
     ;({ header, metadata: meta } = await client.extractMetadata(readable)) // = MetadataReaderResult
-    let usk = await client
-      .requestToken(meta.to_json().identity.attribute)
-      .then((token) =>
-        client.requestKey(token, meta.to_json().identity.timestamp)
-      )
+
+    const {
+      identity: { attribute: irmaIdentity, timestamp: timestamp },
+    } = meta.to_json()
+
+    var session = client.createPKGSession(irmaIdentity, timestamp)
+
+    var irma = new IrmaCore({ debugging: true, session: session })
+    irma.use(IrmaClient)
+    irma.use(CachePlugin)
+    irma.use(IrmaPopup)
+
+    const usk = await irma.start()
     keys = meta.derive_keys(usk)
   }
 
@@ -58,15 +72,13 @@ const listener = async (event) => {
 
   await toReadable(readable)
     .pipeThrough(
-      new TransformStream(
-        new Sealer({
-          aesKey: keys.aes_key,
-          macKey: keys.mac_key,
-          iv: metadata.iv,
-          header: header,
-          decrypt: decrypt,
-        })
-      )
+      client.createTransformStream({
+        aesKey: keys.aes_key,
+        macKey: keys.mac_key,
+        iv: metadata.iv,
+        header: header,
+        decrypt: decrypt,
+      })
     )
     .pipeTo(writer)
   const tEncrypt = performance.now() - t0

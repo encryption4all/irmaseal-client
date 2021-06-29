@@ -36,5 +36,7 @@ export class Chunker {
         offset?: number;
     });
 }
+export const IVSIZE: 16;
+export const KEYSIZE: 32;
 export const TAGSIZE: 32;
 export const DEFAULT_CHUNK_SIZE: number;

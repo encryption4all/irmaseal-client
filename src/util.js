@@ -19,7 +19,7 @@ const { Sealer, DEFAULT_CHUNK_SIZE, TAGSIZE } = require('./stream')
  * @return {Promise<Uint8Array>} - vice versa as above.
  * @throws {Error} if the tags do not match.
  */
-async function symcrypt(keys, iv, header, input, decrypt = false) {
+async function symcrypt({ keys, iv, header, input, decrypt = false }) {
   const outLen = decrypt
     ? input.byteLength - header.byteLength - TAGSIZE
     : input.byteLength + header.byteLength + TAGSIZE
@@ -65,7 +65,7 @@ async function symcrypt(keys, iv, header, input, decrypt = false) {
  * @param {number} offset.
  * @return {ReadableStream}.
  */
-function createFileReadable(file, offset = 0) {
+function createFileReadable(file, { offset = 0 }) {
   return new ReadableStream({
     type: 'bytes',
     autoAllocateChunkSize: DEFAULT_CHUNK_SIZE,
@@ -88,7 +88,7 @@ function createFileReadable(file, offset = 0) {
  * @param {number} offset.
  * @return {ReadableStream}.
  */
-function createUint8ArrayReadable(array, offset = 0) {
+function createUint8ArrayReadable(array, { offset = 0 }) {
   return new ReadableStream({
     type: 'bytes',
     autoAllocateChunkSize: DEFAULT_CHUNK_SIZE,

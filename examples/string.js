@@ -1,9 +1,11 @@
 import 'web-streams-polyfill'
-import {
-  Client,
-  symcrypt,
-  createUint8ArrayReadable,
-} from './../dist/irmaseal-client.js'
+import { Client, CachePlugin } from './../dist/irmaseal-client.js'
+
+import '@privacybydesign/irma-css'
+
+import * as IrmaCore from '@privacybydesign/irma-core'
+import * as IrmaClient from '@privacybydesign/irma-client'
+import * as IrmaPopup from '@privacybydesign/irma-popup'
 
 window.onload = async () => {
   // Create a client
@@ -28,10 +30,15 @@ window.onload = async () => {
   console.log('meta.metadata: ', metadata)
   console.log('nonce: ', metadata.iv)
 
-  const ct = await symcrypt(meta.keys, metadata.iv, meta.header, bytes)
+  const ct = await client.symcrypt({
+    keys: meta.keys,
+    iv: metadata.iv,
+    header: meta.header,
+    input: bytes,
+  })
   console.log('ct :', ct)
 
-  const readable = createUint8ArrayReadable(ct)
+  const readable = client.createUint8ArrayReadable(ct)
   const res = await client.extractMetadata(readable)
   const metadata_retrieved = res.metadata
   const metadata_retrieved_json = metadata_retrieved.to_json()
@@ -44,23 +51,30 @@ window.onload = async () => {
     metadata_retrieved_json.identity.attribute
   )
 
-  const usk = await client
-    .requestToken(metadata_retrieved_json.identity.attribute)
-    .then((token) =>
-      client.requestKey(token, metadata_retrieved_json.identity.timestamp)
-    )
+  var session = client.createPKGSession(
+    metadata_retrieved_json.identity.attribute,
+    metadata_retrieved_json.identity.timestamp
+  )
+
+  console.log('session: ', session)
+
+  var irma = new IrmaCore({ debugging: true, session: session })
+  irma.use(CachePlugin)
+  irma.use(IrmaClient)
+  irma.use(IrmaPopup)
+
+  const usk = await irma.start()
+  console.log('got usk from pkg: ', usk)
 
   const derived_keys = metadata_retrieved.derive_keys(usk)
 
-  console.log('got usk from pkg: ', usk)
-
-  const plain = await symcrypt(
-    derived_keys,
-    metadata_retrieved_json.iv,
-    res.header,
-    ct,
-    true
-  )
+  const plain = await client.symcrypt({
+    keys: derived_keys,
+    iv: metadata_retrieved_json.iv,
+    header: res.header,
+    input: ct,
+    decrypt: true,
+  })
 
   const string2 = new TextDecoder().decode(plain)
   console.log('decrypted: ', string2)

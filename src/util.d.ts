@@ -17,18 +17,18 @@
  * @return {Promise<Uint8Array>} - vice versa as above.
  * @throws {Error} if the tags do not match.
  */
-export function symcrypt(keys: any, iv: Uint8Array, header: Uint8Array, input: Uint8Array, decrypt?: boolean): Promise<Uint8Array>;
+export function symcrypt({ keys, iv, header, input, decrypt }: any): Promise<Uint8Array>;
 /**
  * Creates a ReadableStream of bytes from a Uint8Array.
  * @param {Uint8Array} array.
  * @param {number} offset.
  * @return {ReadableStream}.
  */
-export function createUint8ArrayReadable(array: any, offset?: number): ReadableStream;
+export function createUint8ArrayReadable(array: any, { offset }: number): ReadableStream;
 /**
  * Creates a ReadableStream that reponds to BYOB requests from a file.
  * @param {File} file - file source to read from.
  * @param {number} offset.
  * @return {ReadableStream}.
  */
-export function createFileReadable(file: File, offset?: number): ReadableStream;
+export function createFileReadable(file: File, { offset }: number): ReadableStream;
