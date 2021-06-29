@@ -87,25 +87,19 @@ class Client {
    * @returns {Uint8Array} - result.header - the raw header bytes.
    */
   async extractMetadata(readable) {
-    let reader = readable.getReader({ mode: 'byob' })
+    const [stream1, stream2] = readable.tee()
+    let reader = stream1.getReader()
     let metadataReader = new this.module.MetadataReader()
 
-    var res, done
-    var buf = new ArrayBuffer(512)
-
+    var res, value, done
     while (true) {
-      let view = new Uint8Array(
-        buf,
-        0,
-        Math.min(metadataReader.safe_write_size, 512)
-      )
-      ;({ value: view, done } = await reader.read(view))
-      res = metadataReader.feed(view)
+      var { done, value } = await reader.read()
+      res = metadataReader.feed(value)
       if (res.done || done) break
     }
 
     reader.releaseLock()
-    return { metadata: res.metadata, header: res.header }
+    return { metadata: res.metadata, header: res.header, readable: stream2 }
   }
 
   createTransformStream(options) {

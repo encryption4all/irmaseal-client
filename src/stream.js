@@ -47,7 +47,11 @@ class Chunker {
               chunk.slice(chunkOffset, chunkOffset + remainingBuffer),
               this.bufOffset
             )
-            controller.enqueue(new Uint8Array(this.buf))
+
+            const copy = new Uint8Array(chunkSize)
+            copy.set(new Uint8Array(this.buf))
+            controller.enqueue(copy)
+
             chunkOffset += remainingBuffer
             this.bufOffset = 0
           } else {

@@ -885,10 +885,10 @@
   resolved "https://registry.npmjs.org/@discoveryjs/json-ext/-/json-ext-0.5.3.tgz#90420f9f9c6d3987f176a19a7d8e764271a2f55d"
   integrity sha512-Fxt+AfXgjMoin2maPIYzFZnQjAXjAL0PHscM5pRTtatFqB+vZxAM9tLp2Optnuw3QOQC40jTNeGYFOMvyf7v9g==
 
-"@e4a/irmaseal-wasm-bindings@^0.0.5":
-  version "0.0.5"
-  resolved "https://registry.npmjs.org/@e4a/irmaseal-wasm-bindings/-/irmaseal-wasm-bindings-0.0.5.tgz#6d51e2968f0d4f27dc5697f211d07a1d540579b7"
-  integrity sha512-x8coSbXYcJbRjJynoGV9eMPCuXqhjTg/fdMnhfSWfJmDrbtB9TEyO8UFe8FXFKPrt6BglcYJjDx+xrX8ZJgTcg==
+"@e4a/irmaseal-wasm-bindings@^0.0.6":
+  version "0.0.6"
+  resolved "https://registry.npmjs.org/@e4a/irmaseal-wasm-bindings/-/irmaseal-wasm-bindings-0.0.6.tgz#7a78a089ecb3a26b086435a4e554f7889fa657a7"
+  integrity sha512-4GyuMYqTkEX0OuLhSdd7Wb1Kl57JkHpmZbPDI5m2K/0oBfP/yWKAS8CJAH9fvs5YIvY2x1tfhU4q/cO2z8ywCg==
 
 "@mattiasbuelens/web-streams-adapter@^0.1.0-alpha.5":
   version "0.1.0"
