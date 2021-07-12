@@ -59,7 +59,7 @@ window.onload = async () => {
   console.log('session: ', session)
 
   var irma = new IrmaCore({ debugging: true, session: session })
-  irma.use(CachePlugin)
+  // Optional:  irma.use(CachePlugin)
   irma.use(IrmaClient)
   irma.use(IrmaPopup)
 

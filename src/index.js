@@ -85,6 +85,7 @@ class Client {
    * @returns {Promise<Object>} - result.
    * @returns {Metadata} - result.metadata - the Metadata object extracted from the stream.
    * @returns {Uint8Array} - result.header - the raw header bytes.
+   * @returns {ReadableStream} - result.readable - an unread tee'd version of the stream.
    */
   async extractMetadata(readable) {
     const [stream1, stream2] = readable.tee()
@@ -106,8 +107,12 @@ class Client {
     return new TransformStream(new Sealer(options))
   }
 
-  createChunker() {
-    return new Chunker({ chunkSize: this.constants.block_size })
+  createChunker(options) {
+    return new TransformStream(
+      new Chunker(
+        Object.assign(options, { chunkSize: this.constants.block_size })
+      )
+    )
   }
 
   symcrypt(options) {

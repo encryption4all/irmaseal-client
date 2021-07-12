@@ -23,7 +23,7 @@ const listener = async (event) => {
 
   const decrypt = event.srcElement.classList.contains('decrypt')
   const [inFile] = event.srcElement.files
-  const readable = client.createFileReadable(inFile)
+  var readable = client.createFileReadable(inFile)
 
   var header, meta, keys
 
@@ -34,7 +34,11 @@ const listener = async (event) => {
     }
     ;({ header, metadata: meta, keys } = client.createMetadata(attribute)) // = MetadataCreateResult
   } else {
-    ;({ header, metadata: meta } = await client.extractMetadata(readable)) // = MetadataReaderResult
+    ;({
+      header,
+      metadata: meta,
+      readable,
+    } = await client.extractMetadata(readable)) // = MetadataReaderResult
 
     const {
       identity: { attribute: irmaIdentity, timestamp: timestamp },
@@ -43,8 +47,8 @@ const listener = async (event) => {
     var session = client.createPKGSession(irmaIdentity, timestamp)
 
     var irma = new IrmaCore({ debugging: true, session: session })
+    // Optional:  irma.use(CachePlugin)
     irma.use(IrmaClient)
-    irma.use(CachePlugin)
     irma.use(IrmaPopup)
 
     const usk = await irma.start()
@@ -71,6 +75,9 @@ const listener = async (event) => {
   const t0 = performance.now()
 
   await toReadable(readable)
+    .pipeThrough(
+      client.createChunker({ offset: decrypt ? header.byteLength : 0 })
+    )
     .pipeThrough(
       client.createTransformStream({
         aesKey: keys.aes_key,
