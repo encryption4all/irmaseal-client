@@ -64,17 +64,18 @@ module.exports = class CachePlugin {
     ).then((resp) => {
       if (resp.status !== 200) return {}
       resp.json().then((j) => {
-        this._stateMachine.selectTransition(({ validTransitions }) => {
-          if (validTransitions.includes('skip') && j.status === 'DONE_VALID') {
-            const usk = j.key
-            cached.keys[this._timestamp] = usk
-            window.localStorage.setItem(
-              this._serializedIdentity,
-              JSON.stringify(cached)
-            )
-            return { transition: 'skip', payload: usk }
-          }
-        })
+        if (j.status === 'DONE_VALID') {
+          const usk = j.key
+          cached.keys[this._timestamp] = usk
+          window.localStorage.setItem(
+            this._serializedIdentity,
+            JSON.stringify(cached)
+          )
+          this._stateMachine.selectTransition(({ validTransitions }) => {
+            if (validTransitions.includes('skip'))
+              return { transition: 'skip', payload: usk }
+          })
+        }
       })
     })
   }
