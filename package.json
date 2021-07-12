@@ -34,15 +34,15 @@
     "url": "^0.11.0",
     "web-streams-polyfill": "^3.0.3",
     "webpack": "^5.40.0",
-    "webpack-cli": "^4.7.2"
+    "webpack-cli": "^4.7.2",
+    "@privacybydesign/irma-client": "^0.3.3",
+    "@privacybydesign/irma-core": "^0.3.3",
+    "@privacybydesign/irma-css": "^0.3.3",
+    "@privacybydesign/irma-popup": "^0.3.3"
   },
   "dependencies": {
     "@babel/runtime": "^7.13.17",
     "@e4a/irmaseal-wasm-bindings": "^0.0.6",
-    "@privacybydesign/irma-client": "^0.3.3",
-    "@privacybydesign/irma-core": "^0.3.3",
-    "@privacybydesign/irma-css": "^0.3.3",
-    "@privacybydesign/irma-popup": "^0.3.3",
     "buffer": "^6.0.3",
     "core-js": "^3.10.2",
     "hash-wasm": "^4.6.0",
