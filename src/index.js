@@ -1,4 +1,12 @@
-const irmaFrontend = require('@privacybydesign/irma-frontend')
+const { Sealer, Chunker } = require('./stream')
+const { KEYSIZE, IVSIZE, TAGSIZE, DEFAULT_CHUNK_SIZE } = require('./stream')
+const {
+  symcrypt,
+  createFileReadable,
+  createUint8ArrayReadable,
+} = require('./util')
+
+const CachePlugin = require('./cache')
 
 /**
  * @typedef {Object} Attribute
@@ -13,183 +21,154 @@ class Client {
    * @param {String} url, url of the PKG.
    * @param {String} params, parameters received from /parameters of PKG.
    * @param {Object} module, the imported WASM module.
+   * @param {Object} constants, encryption constants from the rust side.
    */
-  constructor(url, params, module, localStorage) {
+  constructor(url, params, module, constants) {
     this.url = url
     this.params = params
     this.module = module
-    this.localStorage = localStorage
-  }
-
-  /**
-   * Loads the WASM module.
-   * Needs to be run before calling either extractIdentity, encrypt or decrypt.
-   */
-  async loadModule() {
-    this.module = await import('@e4a/irmaseal-wasm-bindings')
+    this.constants = constants
   }
 
   /**
    * Creates a new client to interact with a PKG at the given url.
+   * @static
    * @param {String} url - url of the PKG with which the client connects, required.
-   * @param {Boolean} [loadModule=true] - indicates whether the client will do bytestream operation, optional.
    * @param {Object} [localStorage], localStorage API object, optional.
    * @returns {Promise<Client>} client, an initialized client.
    */
-  static async build(url, loadModule = true, localStorage) {
+  static async build(url) {
     const resp = await fetch(`${url}/v1/parameters`)
     const params = JSON.parse(await resp.text())
-    const ls = localStorage || undefined
-    // TODO: fallback to window.localStorage
-    // || window.localStorage || undefined
-    // doesn't work for now since window.localStorage's api is slightly different (i.e, getItem vs get)
-    const client = new Client(url, params, undefined, ls)
-    if (loadModule) await client.loadModule()
-    return client
+    const module = await import('@e4a/irmaseal-wasm-bindings')
+    const constants = module.constants()
+    const {
+      key_size,
+      iv_size,
+      block_size,
+      mac_size,
+      symmetric_id,
+      verifier_id,
+    } = constants
+
+    // Validate all constants to match expected values or error
+    if (key_size !== KEYSIZE || iv_size !== IVSIZE || mac_size !== TAGSIZE)
+      throw new Error('key, nonce or tag has wrong size')
+    if (symmetric_id !== 'AES256-CTR64BE' || verifier_id !== 'SHA3-256')
+      throw new Error('unsupported aead encryption parameters')
+    if (block_size !== DEFAULT_CHUNK_SIZE)
+      throw new Error(
+        'mismatch in chunk size to be encrypted by symmetric cipher'
+      )
+
+    return new Client(url, params, module, constants)
   }
 
   /**
-   * Returns the identity enclosed in the bytestream (including timestamp)
-   * @param {Uint8Array} irmasealBytestream
-   * @returns {Object} identity
+   * Create a new Metadata object.
+   * @param {Attribute} attribute.
+   * @return {MetadataCreateResult} metadata.
    */
-  extractIdentity(irmasealBytestream) {
-    if (!this.module) throw new Error('WASM module not loaded yet')
-    let serialized = this.module.extract_identity(irmasealBytestream)
-    return JSON.parse(serialized)
-  }
-
-  /**
-   *
-   * @param {Attribute}, singleton attribute identity to encrypt for.
-   * @param {Object} plaintextObject, the object to encrypt.
-   * @returns {Uint8Array} ciphertext.
-   */
-  encrypt(attribute, plaintextObject) {
-    if (!this.module) throw new Error('WASM module not loaded yet')
-    // We JSON encode the what object, pad it to a multiple of 2^9 bytes
-    // with size prefixed and then pass it to irmaseal.
-    let encoder = new TextEncoder()
-    let objectBytes = encoder.encode(JSON.stringify(plaintextObject))
-    let l = objectBytes.byteLength
-    if (l >= 65536 - 2) {
-      throw new Error('Too large to encrypt')
-    }
-    const paddingBits = 9 // pad to 2^9 - 2 = 510
-    let paddedLength = (((l + 1) >> paddingBits) + 1) << paddingBits
-    let buf = new ArrayBuffer(paddedLength)
-    let buf8 = new Uint8Array(buf)
-    buf8[0] = l >> 8
-    buf8[1] = l & 255
-    new Uint8Array(buf, 2).set(new Uint8Array(objectBytes))
-    console.log(attribute.type, attribute.value, this.params.public_key)
-    return this.module.encrypt(
+  createMetadata(attribute) {
+    return new this.module.MetadataCreateResult(
       attribute.type,
       attribute.value,
-      this.params.public_key,
-      new Uint8Array(buf)
+      this.params.public_key
     )
   }
 
   /**
-   * Decrypts the irmasealBytestream using the user secret key (USK).
-   * @param {String} usk, user secret key.
-   * @param {Uint8Array} irmasealBytestream,
-   * @returns {Object}, plaintext object.
+   * Extract Metadata from a ReadableStream.
+   * Reads the stream no further then needed to extract the metadata.
+   * @async
+   * @param {ReadableStream} - readablestream.
+   * @returns {Promise<Object>} - result.
+   * @returns {Metadata} - result.metadata - the Metadata object extracted from the stream.
+   * @returns {Uint8Array} - result.header - the raw header bytes.
+   * @returns {ReadableStream} - result.readable - an unread tee'd version of the stream.
    */
-  decrypt(usk, irmasealBytestream) {
-    if (!this.module) throw new Error('WASM module not loaded yet')
-    let buf = this.module.decrypt(irmasealBytestream, usk)
-    let len = (buf[0] << 8) | buf[1]
-    let decoder = new TextDecoder()
-    return JSON.parse(decoder.decode(buf.slice(2, 2 + len)))
-  }
+  async extractMetadata(readable) {
+    const [stream1, stream2] = readable.tee()
+    let reader = stream1.getReader()
+    let metadataReader = new this.module.MetadataReader()
 
-  /**
-   * Requests a session token for an IRMA identity at the PKG.
-   * @param {Attribute}, attribute to retrieve session token for.
-   * @return {Promise<String>} session token.
-   */
-  async _requestToken(attribute) {
-    return irmaFrontend
-      .newPopup({
-        session: {
-          url: this.url,
-          start: {
-            url: (o) => `${o.url}/v1/request`,
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              attribute: attribute,
-            }),
-          },
-          mapping: {
-            sessionPtr: (r) => JSON.parse(r.qr),
-            sessionToken: (r) => r.token,
-          },
-          result: false,
-        },
-      })
-      .start()
-      .then((map) => map.sessionToken)
-  }
-
-  /**
-   * Request a user private key from the PKG using a session token and timestamp.
-   * @param {String} token, the session token.
-   * @param {Number} timestamp, the UNIX timestamp.
-   * @returns {Promise<String>}, user private key.
-   */
-  requestKey(token, timestamp) {
-    let url = this.url
-    return new Promise(function (resolve, reject) {
-      fetch(`${url}/v1/request/${token}/${timestamp.toString()}`)
-        .then((resp) => {
-          return resp.status !== 200 ? reject(new Error('not ok')) : resp.json()
-        })
-        .then((json) => {
-          return json.status !== 'DONE_VALID'
-            ? reject(new Error('not valid'))
-            : resolve(json.key)
-        })
-    })
-  }
-
-  /**
-   * Retrieves a session token for a given identity given by a single attribute { type, value }.
-   * Uses the localStorage passed to client.build() as a cache otherwise a new token is requested at the PKG.
-   * @param {Attribute} attribute.
-   * @returns {Promise<String>}, a promise of a token.
-   */
-  async requestToken(attribute) {
-    if (!this.localStorage) return this._requestToken(attribute)
-
-    let token
-    const serializedAttr = JSON.stringify(attribute)
-    const cacheObj = await this.localStorage.get(serializedAttr)
-    const cached = cacheObj[serializedAttr]
-
-    if (
-      !cached ||
-      Object.keys(cached).length === 0 ||
-      (cached.validUntil && Date.now() >= cached.validUntil)
-    ) {
-      console.log(
-        'Cache miss or token not valid anymore.\nRequesting fresh token for: ',
-        attribute
-      )
-      token = await this._requestToken(attribute)
-      const t = new Date(Date.now())
-      const validUntil = t.setSeconds(t.getSeconds() + this.params.max_age)
-      this.localStorage.set({
-        [serializedAttr]: { token: token, validUntil: validUntil },
-      })
-    } else {
-      console.log('Cache hit: ', cached)
-      token = cached.token
+    var res, value, done
+    while (true) {
+      var { done, value } = await reader.read()
+      res = metadataReader.feed(value)
+      if (res.done || done) break
     }
-    return token
+
+    reader.releaseLock()
+    return { metadata: res.metadata, header: res.header, readable: stream2 }
+  }
+
+  createTransformStream(options) {
+    return new TransformStream(new Sealer(options))
+  }
+
+  createChunker(options) {
+    return new TransformStream(
+      new Chunker(
+        Object.assign(options, { chunkSize: this.constants.block_size })
+      )
+    )
+  }
+
+  symcrypt(options) {
+    return symcrypt(options)
+  }
+
+  createFileReadable(file, options = {}) {
+    return createFileReadable(file, options)
+  }
+
+  createUint8ArrayReadable(array, options = {}) {
+    return createUint8ArrayReadable(array, options)
+  }
+
+  /*
+   * Returns a session at the PKG.
+   * Result of the session is the user secret key (USK).
+   * @param {Attribute} identity.
+   * @param {number} timestamp.
+   */
+  createPKGSession(identity, timestamp) {
+    return {
+      identity: identity,
+      timestamp: timestamp,
+      maxAge: this.params.max_age,
+      url: this.url,
+      start: {
+        url: (o) => `${o.url}/v1/request`,
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          attribute: identity,
+        }),
+      },
+      state: { serverSentEvents: false },
+      mapping: {
+        sessionPtr: (r) => JSON.parse(r.qr),
+      },
+      result: {
+        url: (o, { sessionToken: token }) =>
+          `${o.url}/v1/request/${token}/${o.timestamp.toString()}`,
+        parseResponse: (r) => {
+          return new Promise((resolve, reject) => {
+            if (r.status != '200') reject('not ok')
+            r.json().then((json) => {
+              if (json.status !== 'DONE_VALID') reject('not done and valid')
+              resolve(json.key)
+            })
+          })
+        },
+      },
+    }
   }
 }
 
-module.exports = { Client: Client }
+module.exports = {
+  Client,
+  CachePlugin,
+}

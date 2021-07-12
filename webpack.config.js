@@ -1,9 +1,9 @@
 const path = require('path')
 const { CleanWebpackPlugin } = require('clean-webpack-plugin')
 const HtmlWebpackPlugin = require('html-webpack-plugin')
+const webpack = require('webpack')
 
 const dist = path.resolve(__dirname, 'dist')
-
 const webpackMode = 'development'
 
 var libConfig = {
@@ -11,6 +11,21 @@ var libConfig = {
   mode: webpackMode,
   entry: {
     index: './src/index.js',
+  },
+  module: {
+    rules: [
+      {
+        test: /\.m?js$/,
+        exclude: /(node_modules|bower_components)/,
+        use: {
+          loader: 'babel-loader',
+          options: {
+            presets: ['@babel/preset-env'],
+            plugins: ['@babel/plugin-transform-runtime'],
+          },
+        },
+      },
+    ],
   },
   output: {
     path: dist,
@@ -27,12 +42,18 @@ var libConfig = {
       cleanOnceBeforeBuildPatterns: ['**/*', '!example_**'],
     }),
   ],
+  resolve: {
+    modules: [path.resolve(__dirname, 'node_modules')],
+  },
 }
 
 var exampleConfig = {
-  name: 'browser-example',
+  name: 'examples',
   mode: webpackMode,
-  entry: './examples/browser.js',
+  entry: {
+    string: './examples/string.js',
+    file: './examples/file.js',
+  },
   output: {
     path: dist,
     filename: 'example_[name].js',
@@ -40,11 +61,40 @@ var exampleConfig = {
   experiments: {
     syncWebAssembly: true,
   },
+  resolve: {
+    fallback: {
+      https: require.resolve('https-browserify'),
+      http: require.resolve('stream-http'),
+      url: require.resolve('url/'),
+      util: require.resolve('util/'),
+      events: false,
+    },
+    modules: [path.resolve(__dirname, 'node_modules')],
+  },
+  module: {
+    rules: [
+      {
+        test: /\.css$/i,
+        use: ['style-loader', 'css-loader'],
+      },
+    ],
+  },
   plugins: [
+    new webpack.ProvidePlugin({
+      process: 'process/browser',
+    }),
     new CleanWebpackPlugin({
       cleanOnceBeforeBuildPatterns: ['example_**'],
     }),
-    new HtmlWebpackPlugin({ filename: 'example_index.html' }),
+    new HtmlWebpackPlugin({
+      filename: 'example_string.html',
+      chunks: ['string'],
+    }),
+    new HtmlWebpackPlugin({
+      filename: 'example_file.html',
+      template: './examples/file.html',
+      chunks: ['file'],
+    }),
   ],
 }
 
