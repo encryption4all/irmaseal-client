@@ -1,5 +1,6 @@
 const { createSHA3 } = require('hash-wasm')
 const Buffer = require('buffer/').Buffer
+const JSBI = require('./jsbi').jsbi;
 
 // Process in 128 KiB chunks
 const DEFAULT_CHUNK_SIZE = 128 * 1024
@@ -136,7 +137,7 @@ class Sealer {
             controller.enqueue(header)
           },
           async transform(chunk, controller) {
-            const blocks = Math.ceil(chunk.byteLength / BLOCKSIZE)
+            const blocks = JSBI.BigInt(Math.ceil(chunk.byteLength / BLOCKSIZE));
 
             // encryption mode: encrypt-then-mac
             const ct = await window.crypto.subtle.encrypt(
@@ -150,10 +151,10 @@ class Sealer {
             controller.enqueue(ctUint8Array)
 
             // Update the counter
-            var view = new DataView(this.iv.buffer)
-            var value = view.getBigUint64(NONCESIZE, false)
-            value += BigInt(blocks)
-            view.setBigUint64(NONCESIZE, value, false)
+            var view = new DataView(this.iv.buffer);
+            var value = JSBI.dataViewGetBigUint64(view, NONCESIZE, false);
+            value = JSBI.add(value, blocks);
+            JSBI.dataViewSetBigUint64(view, NONCESIZE, value, false);
           },
           async flush(controller) {
             const tag = this.hash.digest()
@@ -181,7 +182,7 @@ class Sealer {
             this.tagSplit = false
           },
           async transform(chunk, controller) {
-            const blocks = Math.ceil(chunk.byteLength / BLOCKSIZE)
+            const blocks = JSBI.BigInt(Math.ceil(chunk.byteLength / BLOCKSIZE));
 
             if (chunk.byteLength >= TAGSIZE) {
               // the tag was not in the previous ciphertext block
@@ -215,9 +216,9 @@ class Sealer {
 
             // Update the counter
             var view = new DataView(this.iv.buffer)
-            var value = view.getBigUint64(NONCESIZE, false)
-            value += BigInt(blocks)
-            view.setBigUint64(NONCESIZE, value, false)
+            var value = JSBI.dataViewGetBigUint64(view, NONCESIZE, false);
+            value = JSBI.add(value, blocks);
+            JSBI.dataViewSetBigUint64(view, NONCESIZE, value, false);
           },
           async flush(controller) {
             if (!this.tagSplit) {
