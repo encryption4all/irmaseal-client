@@ -71,7 +71,7 @@ jsbi.dataViewSetBigUint64 = function(dataview, byteOffset, value, littleEndian) 
         dataview.setUint32(byteOffset + (littleEndian ? 0 : 4), lowWord, littleEndian);
         dataview.setUint32(byteOffset + (littleEndian ? 4 : 0), highWord, littleEndian);
     } else {
-        throw TypeError('Value needs to be BigInt ot JSBI');
+        throw TypeError('Value needs to be either BigInt or JSBI');
     }
 }
 
