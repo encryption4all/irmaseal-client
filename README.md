@@ -1,6 +1,6 @@
 # IRMAseal client
 
-This library is meant to run in the browser to offer he following functionality:
+This library is meant to run in the browser to offer the following functionality:
 
 - Communication with a private key generator (PKG) within the IRMAseal IBE model:
   - retrieving public parameters (public key),
