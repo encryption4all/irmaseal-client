@@ -57,10 +57,28 @@ if (globalThis.BigInt) {
 
 jsbi.dataViewSetBigUint64 = function(dataview, byteOffset, value, littleEndian) {
     if (typeof value === 'bigint' && typeof dataview.setBigUint64 !== 'undefined') {
+        // Native bigint with setBigUint64
         dataview.setBigUint64(byteOffset, value, littleEndian);
+    } else if (typeof value === 'bigint' && typeof dataview.setBigUint64 === 'undefined') {
+        // Native bigint without setBigUint64
+        const mask = BigInt(0xffffffff);
+        const bits = 32;
+        const lowWord = Number(BigInt.asUintN(bits, value & mask));
+        const highWord = Number(BigInt.asUintN(bits, (value >> BigInt(bits)) & mask));
+        dataview.setUint32(byteOffset + (littleEndian ? 0 : 4), lowWord, littleEndian);
+        dataview.setUint32(byteOffset + (littleEndian ? 4 : 0), highWord, littleEndian);
     } else if (value.constructor === JSBI && typeof value.sign === 'bigint' && typeof dataview.setBigUint64 !== 'undefined') {
-        // JSBI wrapping a native bigint
+        // JSBI wrapping a native bigint with setBigUint64
         dataview.setBigUint64(byteOffset, value.sign, littleEndian);
+    } else if (value.constructor === JSBI && typeof value.sign === 'bigint' && typeof dataview.setBigUint64 === 'undefined') {
+        // JSBI wrapping a native bigint without setBigUint64
+        const mask = jsbi.BigInt(0xffffffff);
+        const bits = 32;
+        const lowWord = Number(jsbi.asUintN(jsbi.bitwiseAnd(value.sign, mask)));
+        const shifted = jsbi.rightShift(value.sign, bits);
+        const highWord = Number(jsbi.asUintN(jsbi.bitwiseAnd(shifted, mask)));
+        dataview.setUint32(byteOffset + (littleEndian ? 0 : 4), lowWord, littleEndian);
+        dataview.setUint32(byteOffset + (littleEndian ? 4 : 0), highWord, littleEndian);
     } else if (value.constructor === JSBI) {
         // JSBI polyfill implementation
         const lowWord = value[0];
@@ -75,7 +93,6 @@ jsbi.dataViewSetBigUint64 = function(dataview, byteOffset, value, littleEndian) 
     }
 }
 
-
 jsbi.dataViewGetBigUint64 = function (dataview, byteOffset, littleEndian) {
     let res = null;
     if (typeof dataview.getBigUint64 !== 'undefined') {
@@ -83,7 +100,7 @@ jsbi.dataViewGetBigUint64 = function (dataview, byteOffset, littleEndian) {
     } else {
         const lowWord = jsbi.BigInt(dataview.getUint32(byteOffset + (littleEndian ? 0 : 4), littleEndian));
         const highWord = jsbi.BigInt(dataview.getUint32(byteOffset + (littleEndian ? 4 : 0), littleEndian));
-        res = jsbi.add(jsbi.leftShift(highWord, 32), lowWord);
+        res = jsbi.add(jsbi.leftShift(highWord, jsbi.BigInt(32)), lowWord);
     }
     return res;
 }
