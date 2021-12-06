@@ -137,6 +137,7 @@ class Sealer {
             controller.enqueue(header)
           },
           async transform(chunk, controller) {
+            console.log("got chunk: ", chunk.byteLength)
             const blocks = JSBI.BigInt(Math.ceil(chunk.byteLength / BLOCKSIZE));
 
             // encryption mode: encrypt-then-mac
@@ -169,8 +170,8 @@ class Sealer {
             this.aesKey = await _createKey(aesKey)
 
             // start an incremental HMAC with SHA-3 which is just H(k || m = (header || payload))
-            this.hash = await createSHA3(256)
-            this.hash.update(macKey)
+            this.hash = await createBLAKE2s(256, macKey)
+            //this.hash.update(macKey)
             this.hash.update(header)
 
             // for decryption we need some extra bookkeeping

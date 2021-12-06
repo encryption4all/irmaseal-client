@@ -1,12 +1,12 @@
-const { Sealer, Chunker } = require('./stream')
-const { KEYSIZE, IVSIZE, TAGSIZE, DEFAULT_CHUNK_SIZE } = require('./stream')
+//const { Sealer, Chunker } = require('./stream')
+//const { KEYSIZE, IVSIZE, TAGSIZE, DEFAULT_CHUNK_SIZE } = require('./stream')
 const {
-  symcrypt,
+//  symcrypt,
   createFileReadable,
   createUint8ArrayReadable,
 } = require('./util')
 
-const CachePlugin = require('./cache')
+//const CachePlugin = require('./cache')
 
 /**
  * @typedef {Object} Attribute
@@ -27,7 +27,7 @@ class Client {
     this.url = url
     this.params = params
     this.module = module
-    this.constants = constants
+//    this.constants = constants
   }
 
   /**
@@ -38,86 +38,86 @@ class Client {
    * @returns {Promise<Client>} client, an initialized client.
    */
   static async build(url) {
-    const resp = await fetch(`${url}/v1/parameters`)
+    const resp = await fetch(`${url}/v2/parameters`)
     const params = JSON.parse(await resp.text())
     const module = await import('@e4a/irmaseal-wasm-bindings')
-    const constants = module.constants()
-    const {
-      key_size,
-      iv_size,
-      block_size,
-      mac_size,
-      symmetric_id,
-      verifier_id,
-    } = constants
+//    const constants = module.constants()
+//    const {
+//      key_size,
+//      iv_size,
+//      block_size,
+//      mac_size,
+//      symmetric_id,
+//      verifier_id,
+//    } = constants
+//
+//    // Validate all constants to match expected values or error
+//    if (key_size !== KEYSIZE || iv_size !== IVSIZE || mac_size !== TAGSIZE)
+//      throw new Error('key, nonce or tag has wrong size')
+//    if (symmetric_id !== 'AES256-CTR64BE' || verifier_id !== 'SHA3-256')
+//      throw new Error('unsupported aead encryption parameters')
+//    if (block_size !== DEFAULT_CHUNK_SIZE)
+//      throw new Error(
+//        'mismatch in chunk size to be encrypted by symmetric cipher'
+//      )
 
-    // Validate all constants to match expected values or error
-    if (key_size !== KEYSIZE || iv_size !== IVSIZE || mac_size !== TAGSIZE)
-      throw new Error('key, nonce or tag has wrong size')
-    if (symmetric_id !== 'AES256-CTR64BE' || verifier_id !== 'SHA3-256')
-      throw new Error('unsupported aead encryption parameters')
-    if (block_size !== DEFAULT_CHUNK_SIZE)
-      throw new Error(
-        'mismatch in chunk size to be encrypted by symmetric cipher'
-      )
-
-    return new Client(url, params, module, constants)
+    return new Client(url, params, module) //, constants)
   }
 
-  /**
-   * Create a new Metadata object.
-   * @param {Attribute} attribute.
-   * @return {MetadataCreateResult} metadata.
-   */
-  createMetadata(attribute) {
-    return new this.module.MetadataCreateResult(
-      attribute.type,
-      attribute.value,
-      this.params.public_key
-    )
-  }
+//  /**
+//   * Create a new Metadata object.
+//   * @param {Attribute} attribute.
+//   * @return {MetadataCreateResult} metadata.
+//   */
+//  createMetadata(attribute) {
+//    return new this.module.MetadataCreateResult(
+//      attribute.type,
+//      attribute.value,
+//      this.params.public_key
+//    )
+//  }
 
-  /**
-   * Extract Metadata from a ReadableStream.
-   * Reads the stream no further then needed to extract the metadata.
-   * @async
-   * @param {ReadableStream} - readablestream.
-   * @returns {Promise<Object>} - result.
-   * @returns {Metadata} - result.metadata - the Metadata object extracted from the stream.
-   * @returns {Uint8Array} - result.header - the raw header bytes.
-   * @returns {ReadableStream} - result.readable - an unread tee'd version of the stream.
-   */
-  async extractMetadata(readable) {
-    const [stream1, stream2] = readable.tee()
-    let reader = stream1.getReader()
-    let metadataReader = new this.module.MetadataReader()
-
-    var res, value, done
-    while (true) {
-      var { done, value } = await reader.read()
-      res = metadataReader.feed(value)
-      if (res.done || done) break
-    }
-
-    reader.releaseLock()
-    return { metadata: res.metadata, header: res.header, readable: stream2 }
-  }
-
-  createTransformStream(options) {
-    return new TransformStream(new Sealer(options))
-  }
-
-  createChunker(options) {
-    return new TransformStream(
-      new Chunker(
-        Object.assign(options, { chunkSize: this.constants.block_size })
-      )
-    )
-  }
-
-  symcrypt(options) {
-    return symcrypt(options)
-  }
+//  /**
+//   * Extract Metadata from a ReadableStream.
+//   * Reads the stream no further then needed to extract the metadata.
+//   * @async
+//   * @param {ReadableStream} - readablestream.
+//   * @returns {Promise<Object>} - result.
+//   * @returns {Metadata} - result.metadata - the Metadata object extracted from the stream.
+//   * @returns {Uint8Array} - result.header - the raw header bytes.
+//   * @returns {ReadableStream} - result.readable - an unread tee'd version of the stream.
+//   */
+//  async extractMetadata(readable) {
+//    const [stream1, stream2] = readable.tee()
+//    let reader = stream1.getReader()
+//    let metadataReader = new this.module.MetadataReader()
+//
+//    var res, value, done
+//    while (true) {
+//      var { done, value } = await reader.read()
+//      res = metadataReader.feed(value)
+//      if (res.done || done) break
+//    }
+//
+//    reader.releaseLock()
+//    return { metadata: res.metadata, header: res.header, readable: stream2 }
+//  }
+//
+//  createTransformStream(options) {
+//    return new TransformStream(new Sealer(options))
+//  }
+//
+//  createChunker(options) {
+//    return new TransformStream(
+//      new Chunker(
+//        Object.assign(options, { chunkSize: this.constants.block_size })
+//      )
+//    )
+//  }
+//
+//  symcrypt(options) {
+//    return symcrypt(options)
+//  }
 
   createFileReadable(file, options = {}) {
     return createFileReadable(file, options)
@@ -143,11 +143,8 @@ class Client {
         url: (o) => `${o.url}/v1/request`,
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          attribute: identity,
-        }),
+        body: JSON.stringify(identity),
       },
-      state: { serverSentEvents: false },
       mapping: {
         sessionPtr: (r) => JSON.parse(r.qr),
       },
@@ -170,5 +167,5 @@ class Client {
 
 module.exports = {
   Client,
-  CachePlugin,
+//  CachePlugin,
 }

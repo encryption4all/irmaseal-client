@@ -1,5 +1,5 @@
 import 'web-streams-polyfill'
-import { Client, CachePlugin } from './../dist/irmaseal-client'
+import { Client } from './../dist/irmaseal-client'
 
 import '@privacybydesign/irma-css'
 
@@ -7,94 +7,91 @@ import * as IrmaCore from '@privacybydesign/irma-core'
 import * as IrmaClient from '@privacybydesign/irma-client'
 import * as IrmaPopup from '@privacybydesign/irma-popup'
 
-import {
-  createReadableStreamWrapper,
-  createWritableStreamWrapper,
-} from '@mattiasbuelens/web-streams-adapter'
-
-import { createWriteStream } from 'streamsaver'
-
-// Wrappers for native stream implementations
-const toReadable = createReadableStreamWrapper(ReadableStream)
-const toWritable = createWritableStreamWrapper(WritableStream)
+//import {
+//  createReadableStreamWrapper,
+//  createWritableStreamWrapper,
+//} from '@mattiasbuelens/web-streams-adapter'
+//
+//import { createWriteStream } from 'streamsaver'
+//
+//// Wrappers for native stream implementations
+//const toReadable = createReadableStreamWrapper(ReadableStream)
+//const toWritable = createWritableStreamWrapper(WritableStream)
 
 const listener = async (event) => {
-  let client = await Client.build('https://irmacrypt.nl/pkg')
+  let client = await Client.build('http://localhost:8087')
 
   const decrypt = event.srcElement.classList.contains('decrypt')
-  const [inFile] = event.srcElement.files
-  var readable = client.createFileReadable(inFile)
+  const [fileHandle] = await window.showOpenFilePicker()
+  //
+  const inFile = await fileHandle.getFile()
+  const readable = client.createFileReadable(inFile)
+  //  const readable = await inFile.stream()
 
-  var header, meta, keys
+  const options = {
+    types: [
+      {
+        description: 'Output file',
+        accept: {
+          'application/octet-stream': ['.enc'],
+        },
+      },
+    ],
+  }
+
+  const outHandle = await window.showSaveFilePicker(options)
+  const writable = await outHandle.createWritable()
+
+  //  const outStream = createWriteStream(outFileName)
+  //
+  //  const readable = toReadable(inStream);
+  //  const writable = toWritable(outStream)
 
   if (!decrypt) {
-    let attribute = {
-      type: 'pbdf.sidn-pbdf.email.email',
-      value: 'leon.botros@gmail.com',
-    }
-    ;({ header, metadata: meta, keys } = client.createMetadata(attribute)) // = MetadataCreateResult
-  } else {
-    ;({
-      header,
-      metadata: meta,
+    let policies = [
+      {
+        t: Math.round(Date.now() / 1000),
+        c: [{ t: 'pbdf.sidn-pbdf.email.email', v: 'leon.botros@gmail.com' }],
+      },
+    ]
+
+    let identifiers = ['l.botros@cs.ru.nl']
+    let identifiers_str = JSON.stringify(identifiers)
+    let policy_str = JSON.stringify(policies)
+    let pk_str = JSON.stringify(client.params.public_key)
+
+    console.log(pk_str)
+    console.log(identifiers_str)
+    console.log(policy_str)
+
+    const t0 = performance.now()
+
+    await client.module.seal(
+      pk_str,
+      identifiers_str,
+      policy_str,
       readable,
-    } = await client.extractMetadata(readable)) // = MetadataReaderResult
+      writable
+    )
 
-    const {
-      identity: { attribute: irmaIdentity, timestamp: timestamp },
-    } = meta.to_json()
+    const tEncrypt = performance.now() - t0
 
+    console.log(`tEncrypt/Decrypt ${tEncrypt}$ ms`)
+    console.log(`average MB/s: ${inFile.size / (1000 * tEncrypt)}`)
+  } else {
     var session = client.createPKGSession(irmaIdentity, timestamp)
 
-    var irma = new IrmaCore({ debugging: true, session: session })
+    var irma = new IrmaCore({ debugging: true, session })
     // Optional:  irma.use(CachePlugin)
     irma.use(IrmaClient)
     irma.use(IrmaPopup)
 
     const usk = await irma.start()
-    keys = meta.derive_keys(usk)
+    console.log('got key: ', usk)
   }
-
-  const metadata = meta.to_json()
-  console.log('metadata: ', metadata)
-  console.log('aes: ', keys.aes_key)
-  console.log('mac: ', keys.mac_key)
-  console.log('header: ', header)
-
-  const outFileName = decrypt
-    ? inFile.name.replace('.enc', '')
-    : `${inFile.name}.enc`
-
-  const outStream = createWriteStream(outFileName, {
-    size: decrypt
-      ? inFile.size - header.byteLength - 32
-      : inFile.size + header.byteLength + 32,
-  })
-  const writer = toWritable(outStream)
-
-  const t0 = performance.now()
-
-  await toReadable(readable)
-    .pipeThrough(
-      client.createChunker({ offset: decrypt ? header.byteLength : 0 })
-    )
-    .pipeThrough(
-      client.createTransformStream({
-        aesKey: keys.aes_key,
-        macKey: keys.mac_key,
-        iv: metadata.iv,
-        header: header,
-        decrypt: decrypt,
-      })
-    )
-    .pipeTo(writer)
-  const tEncrypt = performance.now() - t0
-
-  console.log(`tEncrypt/Decrypt ${tEncrypt}$ ms`)
-  console.log(`average MB/s: ${inFile.size / (1000 * tEncrypt)}`)
 }
 
 window.onload = async () => {
-  const buttons = document.querySelectorAll('input')
-  buttons.forEach((btn) => btn.addEventListener('change', listener))
+  const buttons = document.querySelectorAll('button')
+  buttons.forEach((btn) => btn.addEventListener('click', listener))
 }

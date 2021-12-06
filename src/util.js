@@ -68,14 +68,14 @@ async function symcrypt({ keys, iv, header, input, decrypt = false }) {
 function createFileReadable(file, { offset = 0 }) {
   return new ReadableStream({
     type: 'bytes',
-    autoAllocateChunkSize: DEFAULT_CHUNK_SIZE,
     async pull(controller) {
       const view = controller.byobRequest.view
       const read = await file
         .slice(offset, offset + view.byteLength)
         .arrayBuffer()
+      if (read.byteLength === 0) controller.close()
+
       view.set(new Uint8Array(read), 0, read.byteLength)
-      if (read.byteLength === 0) return controller.close()
       offset += read.byteLength
       controller.byobRequest.respond(read.byteLength)
     },
@@ -91,12 +91,12 @@ function createFileReadable(file, { offset = 0 }) {
 function createUint8ArrayReadable(array, { offset = 0 }) {
   return new ReadableStream({
     type: 'bytes',
-    autoAllocateChunkSize: DEFAULT_CHUNK_SIZE,
     pull(controller) {
       const view = controller.byobRequest.view
       const slice = array.slice(offset, offset + view.byteLength)
       view.set(slice, 0, slice.byteLength)
-      if (slice.byteLength === 0) return controller.close()
+      if (slice.byteLength === 0) controller.close()
+
       offset += slice.byteLength
       controller.byobRequest.respond(slice.byteLength)
     },
