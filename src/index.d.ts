@@ -1,14 +1,3 @@
-export type KeySet = import('@e4a/irmaseal-wasm-bindings').KeySet;
-export type Metadata = import('@e4a/irmaseal-wasm-bindings').Metadata;
-export type MetadataCreateResult = import('@e4a/irmaseal-wasm-bindings').MetadataCreateResult;
-export type MetadataReaderResult = import('@e4a/irmaseal-wasm-bindings').MetadataReaderResult;
-/**
- * @typedef {import('@e4a/irmaseal-wasm-bindings').KeySet} KeySet
- * @typedef {import('@e4a/irmaseal-wasm-bindings').Metadata} Metadata
- * @typedef {import('@e4a/irmaseal-wasm-bindings').MetadataCreateResult} MetadataCreateResult
- * @typedef {import('@e4a/irmaseal-wasm-bindings').MetadataReaderResult} MetadataReaderResult
- */
-
 export type Attribute = {
     /**
      * - attribute type.
@@ -37,34 +26,14 @@ export class Client {
      * Do not use. Use Client.build() instead.
      * @constructor
      * @param {String} url, url of the PKG.
-     * @param {String} params, parameters received from /parameters of PKG.
+     * @param {Object} params, parameters received from /parameters of PKG.
      * @param {Object} module, the imported WASM module.
      * @param {Object} constants, encryption constants from the rust side.
      */
-    constructor(url: string, params: string, module: any, constants: any);
+    constructor(url: string, params: any, module: any);
     url: string;
-    params: string;
+    params: any;
     module: any;
-    constants: any;
-    /**
-     * Create a new Metadata object.
-     * @param {Attribute} attribute.
-     * @return {MetadataCreateResult} metadata.
-     */
-    createMetadata(attribute: any): any;
-    /**
-     * Extract Metadata from a ReadableStream.
-     * Reads the stream no further then needed to extract the metadata.
-     * @async
-     * @param {ReadableStream} - readablestream.
-     * @returns {Promise<Object>} - result.
-     * @returns {Metadata} - result.metadata - the Metadata object extracted from the stream.
-     * @returns {Uint8Array} - result.header - the raw header bytes.
-     */
-    extractMetadata(readable: any): Promise<any>;
-    createTransformStream(options: any): TransformStream<any, any>;
-    createChunker(): Chunker;
-    symcrypt(options: any): Promise<Uint8Array>;
     createFileReadable(file: any, options?: {}): ReadableStream<any>;
     createUint8ArrayReadable(array: any, options?: {}): ReadableStream<any>;
     createPKGSession(identity: any, timestamp: any): {
@@ -80,12 +49,6 @@ export class Client {
             };
             body: string;
         };
-        state: {
-            serverSentEvents: boolean;
-        };
-        mapping: {
-            sessionPtr: (r: any) => any;
-        };
         result: {
             url: (o: any, { sessionToken: token }: {
                 sessionToken: any;
@@ -94,5 +57,3 @@ export class Client {
         };
     };
 }
-import { Chunker } from "./stream";
-export { CachePlugin };
