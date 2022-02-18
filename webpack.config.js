@@ -6,48 +6,7 @@ const webpack = require('webpack')
 const dist = path.resolve(__dirname, 'dist')
 const webpackMode = 'development'
 
-var libConfig = {
-  name: 'lib',
-  mode: webpackMode,
-  entry: {
-    index: './src/index.js',
-  },
-  module: {
-    rules: [
-      {
-        test: /\.m?js$/,
-        exclude: /(node_modules|bower_components)/,
-        use: {
-          loader: 'babel-loader',
-          options: {
-            presets: ['@babel/preset-env'],
-            plugins: ['@babel/plugin-transform-runtime'],
-          },
-        },
-      },
-    ],
-  },
-  output: {
-    path: dist,
-    filename: 'irmaseal-client.js',
-    library: 'irmaseal-client',
-    libraryTarget: 'umd',
-    publicPath: '',
-  },
-  experiments: {
-    syncWebAssembly: true,
-  },
-  plugins: [
-    new CleanWebpackPlugin({
-      cleanOnceBeforeBuildPatterns: ['**/*', '!example_**'],
-    }),
-  ],
-  resolve: {
-    modules: [path.resolve(__dirname, 'node_modules')],
-  },
-}
-
-var exampleConfig = {
+module.exports = {
   name: 'examples',
   mode: webpackMode,
   entry: {
@@ -60,6 +19,7 @@ var exampleConfig = {
   },
   experiments: {
     syncWebAssembly: true,
+    topLevelAwait: true,
   },
   resolve: {
     fallback: {
@@ -97,5 +57,3 @@ var exampleConfig = {
     }),
   ],
 }
-
-module.exports = [libConfig, exampleConfig]
