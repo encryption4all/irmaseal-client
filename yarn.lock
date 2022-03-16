@@ -12,37 +12,37 @@
   resolved "https://registry.npmjs.org/@e4a/irmaseal-wasm-bindings/-/irmaseal-wasm-bindings-0.2.0-beta.3.tgz#c605f148a1d47c66a284d3679cbe3d0daa31c92f"
   integrity sha512-Vcu7obxQCPfNeKMS9z36UgostZq3r33M5lkzrKm/VJqOVeOboWYuDpmZxxOvekLpKs49mp6Uh85tO9LEeD7JMQ==
 
-"@privacybydesign/irma-client@^0.3.3":
-  version "0.3.3"
-  resolved "https://registry.npmjs.org/@privacybydesign/irma-client/-/irma-client-0.3.3.tgz#8b78b8eda517e1d8bcb01ce86cb0698770c9d09e"
-  integrity sha512-wn6N5TDj9M/KS9xfU2SA9GQM7rQaByFy84xj/lW4Ml6dR8oOObi/EdBKOqwb7Y2icUl+G+y0Tl1sx1fHUg9dBQ==
+"@privacybydesign/irma-client@^0.4.3":
+  version "0.4.3"
+  resolved "https://registry.npmjs.org/@privacybydesign/irma-client/-/irma-client-0.4.3.tgz#1878e14acb434afcb7a9701e5920dd0ecbb9ef51"
+  integrity sha512-AuRg5y87vy2ltQtOg7ySyKgz2dHdKfCjNg73YSOGTX5gRpEkJQdGRutW5ydzjBE6LbeySbTQomvSpifLylgjlQ==
   dependencies:
     deepmerge "^4.2.2"
     eventsource "^1.0.7"
     isomorphic-fetch "^3.0.0"
 
-"@privacybydesign/irma-core@^0.3.3":
-  version "0.3.3"
-  resolved "https://registry.npmjs.org/@privacybydesign/irma-core/-/irma-core-0.3.3.tgz#6a010a5702aebdc644fa48da79e1e019917072bc"
-  integrity sha512-qhhOZeeAhC1eME+ZYr8d9lokSLY0Nejhuou7dTvz0y0HIocJyIzzmz/sD6rnXaRAQ7QRYd5C73l7mT88D1X0XQ==
+"@privacybydesign/irma-core@^0.4.3":
+  version "0.4.3"
+  resolved "https://registry.npmjs.org/@privacybydesign/irma-core/-/irma-core-0.4.3.tgz#1a5fb3bd13dcd93f1244b140b40cc40eff8557cf"
+  integrity sha512-V13osT1yfGLOr4f0oRnIxC+sM3hWvib8ReX3T/ZHqtP+149WS2EsI2gd9RixlE3frrLI7fd0x5R/XBhu4QVC1w==
 
-"@privacybydesign/irma-css@^0.3.3":
-  version "0.3.3"
-  resolved "https://registry.npmjs.org/@privacybydesign/irma-css/-/irma-css-0.3.3.tgz#b1b4cd553df0072e11f5f0eeb47d1a3e84a5152f"
-  integrity sha512-eqJWqjmJFXFZLxsiRwb/B8q+OhvAGGA0JKtYX/M30BMuaIU6tKcq1XJd2Eb9HrlqrQ4KRc+WWHDdtIU3YlAmwg==
+"@privacybydesign/irma-css@^0.4.3":
+  version "0.4.3"
+  resolved "https://registry.npmjs.org/@privacybydesign/irma-css/-/irma-css-0.4.3.tgz#09ce5348f9ab76acd2c471a9c92c6eb277509eaf"
+  integrity sha512-jCUFgzWpka3xjthO3iLmkvMowTesNQijk2Y6dz7f/mny/Skm1RwnLzwgyqtzraZZ1O2Yio0/U7ZfCE9kkVDV0Q==
 
-"@privacybydesign/irma-popup@^0.3.3":
-  version "0.3.3"
-  resolved "https://registry.npmjs.org/@privacybydesign/irma-popup/-/irma-popup-0.3.3.tgz#f0f4c9b4a32b69f24133ecc03412179b2825b4b7"
-  integrity sha512-IPO/7PFMs0H4D7eqT17AYqQ+cF/uEhwFle+tusPGlceeeQyBZ+azG130H4eFRvHgjfCoZYRibJRwD1CCpP2+LA==
+"@privacybydesign/irma-popup@^0.4.3":
+  version "0.4.3"
+  resolved "https://registry.npmjs.org/@privacybydesign/irma-popup/-/irma-popup-0.4.3.tgz#4705e708fe42458259cfabfda994401636bb3b04"
+  integrity sha512-3JmurDgdUh7pJqhwwjPIV2oQ6afG8djkShuanswfw03X+aMHqqLohDPe/lhTBJuW//BpSCCNIOHRjzid+9Pkdw==
   dependencies:
-    "@privacybydesign/irma-web" "^0.3.3"
+    "@privacybydesign/irma-web" "^0.4.3"
     deepmerge "^4.2.2"
 
-"@privacybydesign/irma-web@^0.3.3":
-  version "0.3.3"
-  resolved "https://registry.npmjs.org/@privacybydesign/irma-web/-/irma-web-0.3.3.tgz#e4706c35ee9d6a9ca2186ba67015a69df187e95c"
-  integrity sha512-bgpJPie9S9SZsrk6UoVGFk/wOgEnYaqd3gwmWDX0zXnEGEG9PAFPCb6NAyFHeHNWZg/qslZzj1KhLzqSA8TKOg==
+"@privacybydesign/irma-web@^0.4.3":
+  version "0.4.3"
+  resolved "https://registry.npmjs.org/@privacybydesign/irma-web/-/irma-web-0.4.3.tgz#6a6f196b99ab83a1178819cf843ae4bd14a349a7"
+  integrity sha512-AT0Xawghl0X+9nYiAAKPnV5PMF05fE/dujsBRgJjR+sAtUgCdE4duoFQq9MWSkwkqxhOE3bEZZPDg4oweSwvSQ==
   dependencies:
     deepmerge "^4.2.2"
     qrcode "^1.4.2"
@@ -1521,9 +1521,9 @@ ms@2.0.0:
   integrity sha1-VgiurfwAvmwpAd9fmGF4jeDVl8g=
 
 nanoid@^3.1.23:
-  version "3.1.23"
-  resolved "https://registry.npmjs.org/nanoid/-/nanoid-3.1.23.tgz#f744086ce7c2bc47ee0a8472574d5c78e4183a81"
-  integrity sha512-FiB0kzdP0FFVGDKlRLEQ1BgDzU87dy5NnzjeW9YZNt+/c3+q82EQDUwniSAUxp/F0gFNI1ZhKU1FqYsMuqZVnw==
+  version "3.3.1"
+  resolved "https://registry.npmjs.org/nanoid/-/nanoid-3.3.1.tgz#6347a18cac88af88f58af0b3594b723d5e99bb35"
+  integrity sha512-n6Vs/3KGyxPQd6uO0eH4Bv0ojGSUvuLlIHtC3Y0kEO23YRge8H9x1GCzLn28YX0H66pMkxuaeESFq4tKISKwdw==
 
 negotiator@0.6.3:
   version "0.6.3"
@@ -1549,9 +1549,11 @@ no-case@^3.0.4:
     tslib "^2.0.3"
 
 node-fetch@^2.6.1:
-  version "2.6.1"
-  resolved "https://registry.npmjs.org/node-fetch/-/node-fetch-2.6.1.tgz#045bd323631f76ed2e2b55573394416b639a0052"
-  integrity sha512-V4aYg89jEoVRxRb2fJdAg8FHvI7cEyYdVAh94HH0UIK8oJxUfkjlDQN9RbMx+bEjP7+ggMiFRprSti032Oipxw==
+  version "2.6.7"
+  resolved "https://registry.npmjs.org/node-fetch/-/node-fetch-2.6.7.tgz#24de9fba827e3b4ae44dc8b20256a379160052ad"
+  integrity sha512-ZjMPFEfVx5j+y2yF35Kzx5sF7kDzxuDj6ziH4FFbOp87zKDZNx8yExJIb05OGF4Nlt9IHFIMBkRl41VdvcNdbQ==
+  dependencies:
+    whatwg-url "^5.0.0"
 
 node-releases@^1.1.71:
   version "1.1.73"
@@ -1578,9 +1580,9 @@ npm-run-path@^4.0.1:
     path-key "^3.0.0"
 
 nth-check@^2.0.0:
-  version "2.0.0"
-  resolved "https://registry.npmjs.org/nth-check/-/nth-check-2.0.0.tgz#1bb4f6dac70072fc313e8c9cd1417b5074c0a125"
-  integrity sha512-i4sc/Kj8htBrAiH1viZ0TgU8Y5XqCaV/FziYK6TBczxmeKm3AEFWqqF3195yKudrarqy7Zu80Ra5dobFjn9X/Q==
+  version "2.0.1"
+  resolved "https://registry.npmjs.org/nth-check/-/nth-check-2.0.1.tgz#2efe162f5c3da06a28959fbd3db75dbeea9f0fc2"
+  integrity sha512-it1vE95zF6dTT9lBsYbxvqh0Soy4SPowchj0UBGj/V6cTPnXXtQOPUbhZ6CmGzAD/rW22LQK6E96pcdJXk4A4w==
   dependencies:
     boolbase "^1.0.0"
 
@@ -2294,6 +2296,11 @@ terser@^5.7.0:
     source-map "~0.7.2"
     source-map-support "~0.5.19"
 
+tr46@~0.0.3:
+  version "0.0.3"
+  resolved "https://registry.npmjs.org/tr46/-/tr46-0.0.3.tgz#8184fd347dac9cdc185992f3a6622e14b9d9ab6a"
+  integrity sha1-gYT9NH2snNwYWZLzpmIuFLnZq2o=
+
 tslib@^2.0.3:
   version "2.3.0"
   resolved "https://registry.npmjs.org/tslib/-/tslib-2.3.0.tgz#803b8cdab3e12ba581a4ca41c8839bbb0dacb09e"
@@ -2330,9 +2337,9 @@ uri-js@^4.2.2:
     punycode "^2.1.0"
 
 url-parse@^1.4.3:
-  version "1.5.3"
-  resolved "https://registry.yarnpkg.com/url-parse/-/url-parse-1.5.3.tgz#71c1303d38fb6639ade183c2992c8cc0686df862"
-  integrity sha512-IIORyIQD9rvj0A4CLWsHkBBJuNqWpFQe224b6j9t/ABmquIS0qDU2pY6kl6AuOrL5OkCXHMCFNe1jBcuAggjvQ==
+  version "1.5.10"
+  resolved "https://registry.npmjs.org/url-parse/-/url-parse-1.5.10.tgz#9d3c2f736c1d75dd3bd2be507dcc111f1e2ea9c1"
+  integrity sha512-WypcfiRhfeUP9vvF0j6rw0J3hrWrw6iZv3+22h6iRMJ/8z1Tj6XfLP4DsUix5MhMPnXpiHDoKyoZ/bdCkwBCiQ==
   dependencies:
     querystringify "^2.1.1"
     requires-port "^1.0.0"
@@ -2389,6 +2396,11 @@ web-streams-polyfill@^3.0.3:
   version "3.0.3"
   resolved "https://registry.npmjs.org/web-streams-polyfill/-/web-streams-polyfill-3.0.3.tgz#f49e487eedeca47a207c1aee41ee5578f884b42f"
   integrity sha512-d2H/t0eqRNM4w2WvmTdoeIvzAUSpK7JmATB8Nr2lb7nQ9BTIJVjbQ/TRFVEh2gUH1HwclPdoPtfMoFfetXaZnA==
+
+webidl-conversions@^3.0.0:
+  version "3.0.1"
+  resolved "https://registry.npmjs.org/webidl-conversions/-/webidl-conversions-3.0.1.tgz#24534275e2a7bc6be7bc86611cc16ae0a5654871"
+  integrity sha1-JFNCdeKnvGvnvIZhHMFq4KVlSHE=
 
 webpack-cli@^4.7.2:
   version "4.7.2"
@@ -2456,6 +2468,14 @@ whatwg-fetch@^3.4.1:
   version "3.6.2"
   resolved "https://registry.npmjs.org/whatwg-fetch/-/whatwg-fetch-3.6.2.tgz#dced24f37f2624ed0281725d51d0e2e3fe677f8c"
   integrity sha512-bJlen0FcuU/0EMLrdbJ7zOnW6ITZLrZMIarMUVmdKtsGvZna8vxKYaexICWPfZ8qwf9fzNq+UEIZrnSaApt6RA==
+
+whatwg-url@^5.0.0:
+  version "5.0.0"
+  resolved "https://registry.npmjs.org/whatwg-url/-/whatwg-url-5.0.0.tgz#966454e8765462e37644d3626f6742ce8b70965d"
+  integrity sha1-lmRU6HZUYuN2RNNib2dCzotwll0=
+  dependencies:
+    tr46 "~0.0.3"
+    webidl-conversions "^3.0.0"
 
 which-boxed-primitive@^1.0.2:
   version "1.0.2"
