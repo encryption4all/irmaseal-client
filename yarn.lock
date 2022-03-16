@@ -7,10 +7,10 @@
   resolved "https://registry.npmjs.org/@discoveryjs/json-ext/-/json-ext-0.5.3.tgz#90420f9f9c6d3987f176a19a7d8e764271a2f55d"
   integrity sha512-Fxt+AfXgjMoin2maPIYzFZnQjAXjAL0PHscM5pRTtatFqB+vZxAM9tLp2Optnuw3QOQC40jTNeGYFOMvyf7v9g==
 
-"@e4a/irmaseal-wasm-bindings@^0.0.6":
-  version "0.0.6"
-  resolved "https://registry.npmjs.org/@e4a/irmaseal-wasm-bindings/-/irmaseal-wasm-bindings-0.0.6.tgz#7a78a089ecb3a26b086435a4e554f7889fa657a7"
-  integrity sha512-4GyuMYqTkEX0OuLhSdd7Wb1Kl57JkHpmZbPDI5m2K/0oBfP/yWKAS8CJAH9fvs5YIvY2x1tfhU4q/cO2z8ywCg==
+"@e4a/irmaseal-wasm-bindings@0.2.0-beta.3":
+  version "0.2.0-beta.3"
+  resolved "https://registry.npmjs.org/@e4a/irmaseal-wasm-bindings/-/irmaseal-wasm-bindings-0.2.0-beta.3.tgz#c605f148a1d47c66a284d3679cbe3d0daa31c92f"
+  integrity sha512-Vcu7obxQCPfNeKMS9z36UgostZq3r33M5lkzrKm/VJqOVeOboWYuDpmZxxOvekLpKs49mp6Uh85tO9LEeD7JMQ==
 
 "@privacybydesign/irma-client@^0.3.3":
   version "0.3.3"
