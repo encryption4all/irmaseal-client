@@ -34,7 +34,7 @@ const listener = async (event) => {
     const policies = {
       [identifier]: {
         ts: Math.round(Date.now() / 1000),
-        c: [{ t: "irma-demo.gemeente.personalData.fullname", v: "Alice" }],
+        con: [{ t: "irma-demo.gemeente.personalData.fullname", v: "Alice" }],
       },
     };
 
