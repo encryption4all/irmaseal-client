@@ -14,7 +14,7 @@ const test_id = "alice";
 
 window.onload = async () => {
   const resp = await fetch(`${pkg}/v2/parameters`);
-  const mpk = await resp.json().then((r) => r.public_key);
+  const mpk = await resp.json().then((r) => r.publicKey);
 
   console.log("retrieved public key: ", mpk);
 
@@ -86,7 +86,7 @@ window.onload = async () => {
     // Guess it right, order should not matter
     const keyRequest = {
       con: [{ t: "irma-demo.gemeente.personalData.fullname", v: "Alice" }],
-      validity: 60 * 60 * 24, // 1 day
+      validity: 600, // 1 minute, with 1 minute leeway
     };
 
     const timestamp = hidden[test_id].ts;
@@ -94,7 +94,7 @@ window.onload = async () => {
     const session = {
       url: pkg,
       start: {
-        url: (o) => `${o.url}/v2/request`,
+        url: (o) => `${o.url}/v2/request/start`,
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(keyRequest),
@@ -108,7 +108,7 @@ window.onload = async () => {
       //      },
       //    },
       result: {
-        url: (o, { sessionToken }) => `${o.url}/v2/request_jwt/${sessionToken}`,
+        url: (o, { sessionToken }) => `${o.url}/v2/request/jwt/${sessionToken}`,
         parseResponse: (r) => r.text(),
       },
     };
@@ -119,7 +119,7 @@ window.onload = async () => {
     irma.use(IrmaPopup);
 
     const jwt = await irma.start();
-    const usk = await fetch(`${pkg}/v2/request_key/${timestamp.toString()}`, {
+    const usk = await fetch(`${pkg}/v2/request/key/${timestamp.toString()}`, {
       headers: {
         Authorization: `Bearer ${jwt}`,
       },
