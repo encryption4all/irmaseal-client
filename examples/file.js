@@ -10,7 +10,7 @@ if (window.WritableStream == undefined) {
   window.WritableStream = PolyfilledWritableStream;
 }
 
-const pkg = "http://localhost:8087"; //"https://main.irmaseal-pkg.ihub.ru.nl";
+const pkg = "https://main.irmaseal-pkg.ihub.ru.nl";
 const identifier = "alice";
 var mpk;
 var mod;
@@ -72,18 +72,35 @@ const listener = async (event) => {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(keyRequest),
         },
-        //    mapping: {
-        //      // temporary fix
-        //      sessionPtr: (r) => {
-        //        const ptr = r.sessionPtr;
-        //        ptr.u = `https://ihub.ru.nl/irma/1/${ptr.u}`;
-        //        return ptr;
-        //      },
-        //    },
+        mapping: {
+          // temporary fix
+          sessionPtr: (r) => {
+            const ptr = r.sessionPtr;
+            ptr.u = `https://ihub.ru.nl/irma/1/${ptr.u}`;
+            return ptr;
+          },
+        },
         result: {
           url: (o, { sessionToken }) =>
             `${o.url}/v2/request/jwt/${sessionToken}`,
-          parseResponse: (r) => r.text(),
+          parseResponse: (r) => {
+            return r
+              .text()
+              .then((jwt) =>
+                fetch(`${pkg}/v2/request/key/${timestamp.toString()}`, {
+                  headers: {
+                    Authorization: `Bearer ${jwt}`,
+                  },
+                })
+              )
+              .then((r) => r.json())
+              .then((json) => {
+                if (json.status !== "DONE" || json.proofStatus !== "VALID")
+                  throw new Error("not done and valid");
+                return json.key;
+              })
+              .catch((e) => console.log("error: ", e));
+          },
         },
       };
 
@@ -92,20 +109,7 @@ const listener = async (event) => {
       irma.use(IrmaClient);
       irma.use(IrmaPopup);
 
-      const jwt = await irma.start();
-      const usk = await fetch(`${pkg}/v2/request/key/${timestamp.toString()}`, {
-        headers: {
-          Authorization: `Bearer ${jwt}`,
-        },
-      })
-        .then((keyResponse) => keyResponse.json())
-        .then((json) => {
-          if (json.status !== "DONE" || json.proofStatus !== "VALID")
-            throw new Error("not done and valid");
-          return json.key;
-        })
-        .catch((e) => console.log("error: ", e));
-
+      const usk = await irma.start();
       console.log("retrieved usk: ", usk);
 
       const t0 = performance.now();
