@@ -21,11 +21,11 @@
     "style-loader": "^2.0.0",
     "url": "^0.11.0",
     "web-streams-polyfill": "^3.0.3",
-    "webpack": "^5.69.1",
+    "webpack": "^5.72.1",
     "webpack-cli": "^4.7.2"
   },
   "dependencies": {
-    "@e4a/irmaseal-wasm-bindings": "0.2.0-beta.7",
+    "@e4a/irmaseal-wasm-bindings": "0.2.0",
     "buffer": "^6.0.3",
     "util": "^0.12.4"
   },
