@@ -18,7 +18,7 @@ module.exports = {
         filename: 'example_[name].js',
     },
     experiments: {
-        syncWebAssembly: true,
+        asyncWebAssembly: true,
         topLevelAwait: true,
     },
     resolve: {

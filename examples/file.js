@@ -10,8 +10,8 @@ if (window.WritableStream == undefined) {
   window.WritableStream = PolyfilledWritableStream;
 }
 
-const pkg = "https://main.irmaseal-pkg.ihub.ru.nl";
-const identifier = "alice";
+const pkg = "http://localhost:8087";
+const identifier = "Alice";
 var mpk;
 var mod;
 
@@ -132,7 +132,7 @@ window.onload = async () => {
 
   console.log("retrieved public key: ", mpk);
 
-  mod = await import("@e4a/irmaseal-wasm-bindings");
+  mod = await import("@e4a/pg-wasm");
   console.log("loaded WASM module");
 
   const buttons = document.querySelectorAll("input");

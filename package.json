@@ -25,7 +25,6 @@
     "webpack-cli": "^4.7.2"
   },
   "dependencies": {
-    "@e4a/irmaseal-wasm-bindings": "0.2.0",
     "buffer": "^6.0.3",
     "util": "^0.12.4"
   },

@@ -1,152 +1,189 @@
-import * as IrmaCore from "@privacybydesign/irma-core";
-import * as IrmaClient from "@privacybydesign/irma-client";
-import * as IrmaPopup from "@privacybydesign/irma-popup";
-import "@privacybydesign/irma-css";
+import * as IrmaCore from '@privacybydesign/irma-core'
+import * as IrmaClient from '@privacybydesign/irma-client'
+import * as IrmaPopup from '@privacybydesign/irma-popup'
+import '@privacybydesign/irma-css'
 
-import { PolyfilledWritableStream } from "web-streams-polyfill";
+import { PolyfilledWritableStream } from 'web-streams-polyfill'
 
 if (window.WritableStream == undefined) {
-  window.WritableStream = PolyfilledWritableStream;
+    window.WritableStream = PolyfilledWritableStream
 }
 
-const pkg = "https://main.irmaseal-pkg.ihub.ru.nl";
-const test_id = "alice";
+const pkg = 'http://localhost:8087'
+
+const KeySorts = {
+    Encryption: 'key',
+    Signing: 'sign/key',
+}
+
+async function fetchKey(sort, keyRequest, timestamp) {
+    const session = {
+        url: pkg,
+        start: {
+            url: (o) => `${o.url}/v2/request/start`,
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(keyRequest),
+        },
+        result: {
+            url: (o, { sessionToken }) => `${o.url}/v2/request/jwt/${sessionToken}`,
+            parseResponse: (r) => {
+                return r
+                    .text()
+                    .then((jwt) =>
+                        fetch(
+                            `${pkg}/v2/request/${sort}${
+                                timestamp ? '/' + timestamp.toString() : ''
+                            }`,
+                            {
+                                headers: {
+                                    Authorization: `Bearer ${jwt}`,
+                                },
+                            }
+                        )
+                    )
+                    .then((r) => r.json())
+                    .then((json) => {
+                        if (json.status !== 'DONE' || json.proof_status !== 'VALID')
+                            throw new Error('not done and valid')
+                        return json.key
+                    })
+                    .catch((e) => console.log('error: ', e))
+            },
+        },
+    }
+
+    const irma = new IrmaCore({ debugging: true, session })
+
+    irma.use(IrmaClient)
+    irma.use(IrmaPopup)
+
+    const usk = await irma.start()
+    console.log('retrieved usk: ', usk)
+
+    return usk
+}
 
 window.onload = async () => {
-  const resp = await fetch(`${pkg}/v2/parameters`);
-  const mpk = await resp.json().then((r) => r.publicKey);
+    const mod = await import('@e4a/pg-wasm')
+    console.log('loaded WASM module')
 
-  console.log("retrieved public key: ", mpk);
+    const mpk = await fetch(`${pkg}/v2/parameters`)
+        .then((r) => r.json())
+        .then((j) => j.publicKey)
 
-  const mod = await import("@e4a/irmaseal-wasm-bindings");
-  console.log("loaded WASM module");
+    console.log('retrieved public key: ', mpk)
 
-  // This example uses a demo credential.
-  // Anyone get retrieve an instance with custom data at the following URL:
-  // https://privacybydesign.foundation/attribute-index/en/irma-demo.gemeente.personalData.html
-  const policies = {
-    [test_id]: {
-      ts: Math.round(Date.now() / 1000),
-      con: [{ t: "irma-demo.gemeente.personalData.fullname", v: "Alice" }],
-    },
-  };
+    // This example uses demo credentials.
+    // Anyone get retrieve an instance with custom data at the following URL:
+    // https://privacybydesign.foundation/attribute-index/en/irma-demo.gemeente.personalData.html
 
-  console.log("Encrypting using policies: ", policies);
-
-  const input = "plaintext";
-
-  const sealerReadable = new ReadableStream({
-    start: (controller) => {
-      const encoded = new TextEncoder().encode(input);
-      controller.enqueue(encoded);
-      controller.close();
-    },
-  });
-
-  let output = new Uint8Array(0);
-  const sealerWritable = new WritableStream({
-    write: (chunk) => {
-      output = new Uint8Array([...output, ...chunk]);
-    },
-  });
-
-  const t0 = performance.now();
-
-  try {
-    await mod.seal(mpk, policies, sealerReadable, sealerWritable);
-  } catch (e) {
-    console.log("error during sealing: ", e);
-  }
-
-  const tEncrypt = performance.now() - t0;
-
-  console.log(`tEncrypt ${tEncrypt}$ ms`);
-
-  /// Decryption
-
-  const unsealerReadable = new ReadableStream({
-    start: (controller) => {
-      controller.enqueue(output);
-      controller.close();
-    },
-  });
-
-  let original = "";
-  const unsealerWritable = new WritableStream({
-    write: (chunk) => {
-      original += new TextDecoder().decode(chunk);
-    },
-  });
-
-  try {
-    const unsealer = await mod.Unsealer.new(unsealerReadable);
-    const hidden = unsealer.get_hidden_policies();
-    console.log("hidden policy: ", hidden);
-
-    const keyRequest = {
-      con: [{ t: "irma-demo.gemeente.personalData.fullname", v: "Alice" }],
-      validity: 600, // 1 minute
-    };
-
-    const timestamp = hidden[test_id].ts;
-
-    const session = {
-      url: pkg,
-      start: {
-        url: (o) => `${o.url}/v2/request/start`,
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(keyRequest),
-      },
-      mapping: {
-        // temporary fix
-        sessionPtr: (r) => {
-          const ptr = r.sessionPtr;
-          ptr.u = `https://ihub.ru.nl/irma/1/${ptr.u}`;
-          return ptr;
+    const enc_policy = {
+        Bob: {
+            ts: Math.round(Date.now() / 1000),
+            con: [{ t: 'irma-demo.sidn-pbdf.email.email', v: 'bob@example.com' }],
         },
-      },
-      result: {
-        url: (o, { sessionToken }) => `${o.url}/v2/request/jwt/${sessionToken}`,
-        parseResponse: (r) => {
-          return r
-            .text()
-            .then((jwt) =>
-              fetch(`${pkg}/v2/request/key/${timestamp.toString()}`, {
-                headers: {
-                  Authorization: `Bearer ${jwt}`,
-                },
-              })
-            )
-            .then((r) => r.json())
-            .then((json) => {
-              if (json.status !== "DONE" || json.proofStatus !== "VALID")
-                throw new Error("not done and valid");
-              return json.key;
-            })
-            .catch((e) => console.log("error: ", e));
+    }
+
+    const pub_sig_policy = {
+        con: [{ t: 'irma-demo.gemeente.personalData.fullname', v: 'Alice' }],
+    }
+
+    const priv_sig_policy = {
+        con: [{ t: 'irma-demo.gemeente.personalData.bsn', v: '1234' }],
+    }
+
+    console.log('retrieving signing key for Alice')
+
+    let pub_sign_key = await fetchKey(KeySorts.Signing, pub_sig_policy, undefined)
+    let priv_sign_key = await fetchKey(KeySorts.Signing, priv_sig_policy, undefined)
+
+    console.log('got public signing key for Alice: ', pub_sign_key)
+    console.log('got private signing key for Alice: ', priv_sign_key)
+
+    const sealOptions = {
+        policy: enc_policy,
+        pub_sign_key,
+        priv_sign_key,
+    }
+
+    console.log(
+        `Encrypting using policy: \n${enc_policy} and signing using:\n ${pub_sig_policy} and ${pub_sig_policy}`
+    )
+
+    const input = 'plaintext'
+
+    const sealerReadable = new ReadableStream({
+        start: (controller) => {
+            const encoded = new TextEncoder().encode(input)
+            controller.enqueue(encoded)
+            controller.close()
         },
-      },
-    };
+    })
 
-    const irma = new IrmaCore({ debugging: true, session });
+    let output = new Uint8Array(0)
+    const sealerWritable = new WritableStream({
+        write: (chunk) => {
+            output = new Uint8Array([...output, ...chunk])
+        },
+    })
 
-    irma.use(IrmaClient);
-    irma.use(IrmaPopup);
+    const t0 = performance.now()
 
-    const usk = await irma.start();
-    console.log("retrieved usk: ", usk);
+    try {
+        await mod.seal(mpk, sealOptions, sealerReadable, sealerWritable)
+    } catch (e) {
+        console.log('error during sealing: ', e)
+    }
 
-    const t0 = performance.now();
+    const tEncrypt = performance.now() - t0
 
-    await unsealer.unseal(test_id, usk, unsealerWritable);
+    console.log(`tEncrypt ${tEncrypt}$ ms`)
 
-    console.log("original: ", original);
+    /// Decryption
+    const vk = await fetch(`${pkg}/v2/sign/parameters`)
+        .then((r) => r.json())
+        .then((j) => j.publicKey)
 
-    const tDecrypt = performance.now() - t0;
+    console.log('retrieved verification key: ', vk)
 
-    console.log(`tDecrypt ${tDecrypt}$ ms`);
-  } catch (e) {
-    console.log("error during unsealing: ", e);
-  }
-};
+    const unsealerReadable = new ReadableStream({
+        start: (controller) => {
+            controller.enqueue(output)
+            controller.close()
+        },
+    })
+
+    let original = ''
+    const unsealerWritable = new WritableStream({
+        write: (chunk) => {
+            original += new TextDecoder().decode(chunk)
+        },
+    })
+
+    try {
+        const unsealer = await mod.Unsealer.new(unsealerReadable, vk)
+        const header = unsealer.inspect_header()
+        console.log('header contains the following recipients: ', header)
+
+        const keyRequest = {
+            con: [{ t: 'irma-demo.sidn-pbdf.email.email', v: 'bob@example.com' }],
+            validity: 600, // 1 minute
+        }
+
+        const timestamp = header.get('Bob').ts
+        const usk = await fetchKey(KeySorts.Encryption, keyRequest, timestamp)
+        const t0 = performance.now()
+
+        const verified_sender = await unsealer.unseal('Bob', usk, unsealerWritable)
+
+        console.log('original: ', original)
+        console.log('signed: ', verified_sender)
+
+        const tDecrypt = performance.now() - t0
+
+        console.log(`tDecrypt ${tDecrypt}$ ms`)
+    } catch (e) {
+        console.log('error during unsealing: ', e)
+    }
+}
