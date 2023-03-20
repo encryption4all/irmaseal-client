@@ -1,140 +1,109 @@
-import * as IrmaCore from "@privacybydesign/irma-core";
-import * as IrmaClient from "@privacybydesign/irma-client";
-import * as IrmaPopup from "@privacybydesign/irma-popup";
-import "@privacybydesign/irma-css";
+import { KeySorts, fetchKey, PKG_URL } from './utils'
 
-import { PolyfilledWritableStream } from "web-streams-polyfill";
-import { createWriteStream } from "streamsaver";
+import { PolyfilledWritableStream } from 'web-streams-polyfill'
+import { createWriteStream } from 'streamsaver'
 
 if (window.WritableStream == undefined) {
-  window.WritableStream = PolyfilledWritableStream;
+    window.WritableStream = PolyfilledWritableStream
 }
 
-const pkg = "http://localhost:8087";
-const identifier = "Alice";
-var mpk;
-var mod;
+// This example uses a demo credential.
+// Anyone get retrieve an instance with custom data at the following URL:
+// https://privacybydesign.foundation/attribute-index/en/irma-demo.gemeente.personalData.html
+
+const modPromise = import('@e4a/pg-wasm')
+
+async function encryptFile(readable, writable) {
+    const mod = await modPromise
+
+    const resp = await fetch(`${PKG_URL}/v2/parameters`)
+    const mpk = await resp.json().then((r) => r.publicKey)
+
+    const enc_policy = {
+        Bob: {
+            ts: Math.round(Date.now() / 1000),
+            con: [{ t: 'irma-demo.sidn-pbdf.email.email', v: 'bob@example.com' }],
+        },
+    }
+
+    const pub_sig_policy = {
+        con: [{ t: 'irma-demo.gemeente.personalData.fullname', v: 'Alice' }],
+    }
+
+    const priv_sig_policy = {
+        con: [{ t: 'irma-demo.gemeente.personalData.bsn', v: '1234' }],
+    }
+
+    console.log('retrieving signing key for Alice')
+
+    let pub_sign_key = await fetchKey(KeySorts.Signing, pub_sig_policy)
+    let priv_sign_key = await fetchKey(KeySorts.Signing, priv_sig_policy)
+
+    console.log('got public signing key for Alice: ', pub_sign_key)
+    console.log('got private signing key for Alice: ', priv_sign_key)
+
+    const sealOptions = {
+        policy: enc_policy,
+        pub_sign_key,
+        priv_sign_key,
+    }
+
+    try {
+        await mod.seal(mpk, sealOptions, readable, writable)
+    } catch (e) {
+        console.log('error during sealing: ', e)
+    }
+}
+
+async function decryptFile(readable, writable) {
+    const mod = await modPromise
+
+    const vk = await fetch(`${PKG_URL}/v2/sign/parameters`)
+        .then((r) => r.json())
+        .then((j) => j.publicKey)
+
+    console.log('retrieved verification key: ', vk)
+
+    const unsealer = await mod.Unsealer.new(readable, vk)
+    const recipients = unsealer.inspect_header()
+    console.log('header contains the following recipients', recipients)
+
+    const keyRequest = {
+        con: [{ t: 'irma-demo.sidn-pbdf.email.email', v: 'bob@example.com' }],
+        validity: 600, // 1 minute
+    }
+
+    const timestamp = recipients.get('Bob').ts
+    const usk = await fetchKey(KeySorts.Encryption, keyRequest, timestamp)
+    try {
+        await unsealer.unseal('Bob', usk, writable)
+    } catch (e) {
+        console.log('error during unsealing: ', e)
+    }
+}
 
 const listener = async (event) => {
-  const decrypt = event.srcElement.classList.contains("decrypt");
-  const [inFile] = event.srcElement.files;
+    const decrypt = event.srcElement.classList.contains('decrypt')
+    const [inFile] = event.srcElement.files
 
-  const outFileName = decrypt
-    ? inFile.name.replace(".enc", "")
-    : `${inFile.name}.enc`;
-  const fileWritable = createWriteStream(outFileName);
+    const outFileName = decrypt ? inFile.name.replace('.enc', '') : `${inFile.name}.enc`
+    const fileWritable = createWriteStream(outFileName)
 
-  const readable = inFile.stream();
-  const writable = fileWritable;
+    const readable = inFile.stream()
+    const writable = fileWritable
 
-  if (!decrypt) {
-    // This example uses a demo credential.
-    // Anyone get retrieve an instance with custom data at the following URL:
-    // https://privacybydesign.foundation/attribute-index/en/irma-demo.gemeente.personalData.html
-    const policies = {
-      [identifier]: {
-        ts: Math.round(Date.now() / 1000),
-        con: [{ t: "irma-demo.gemeente.personalData.fullname", v: "Alice" }],
-      },
-    };
+    const t0 = performance.now()
 
-    console.log("Encrypting file using policies: ", policies);
+    if (decrypt) await decryptFile(readable, writable)
+    else await encryptFile(readable, writable)
 
-    const t0 = performance.now();
+    const t = performance.now() - t0
 
-    try {
-      await mod.seal(mpk, policies, readable, writable);
-    } catch (e) {
-      console.log("error during sealing: ", e);
-    }
-
-    const tEncrypt = performance.now() - t0;
-
-    console.log(`tEncrypt ${tEncrypt}$ ms`);
-    console.log(`average MB/s: ${inFile.size / (1000 * tEncrypt)}`);
-  } else {
-    try {
-      const unsealer = await mod.Unsealer.new(readable);
-      const hidden = unsealer.get_hidden_policies();
-      console.log("hidden policy: ", hidden);
-
-      const keyRequest = {
-        con: [{ t: "irma-demo.gemeente.personalData.fullname", v: "Alice" }],
-      };
-
-      const timestamp = hidden[identifier].ts;
-
-      const session = {
-        url: pkg,
-        start: {
-          url: (o) => `${o.url}/v2/request/start`,
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(keyRequest),
-        },
-        mapping: {
-          // temporary fix
-          sessionPtr: (r) => {
-            const ptr = r.sessionPtr;
-            ptr.u = `https://ihub.ru.nl/irma/1/${ptr.u}`;
-            return ptr;
-          },
-        },
-        result: {
-          url: (o, { sessionToken }) =>
-            `${o.url}/v2/request/jwt/${sessionToken}`,
-          parseResponse: (r) => {
-            return r
-              .text()
-              .then((jwt) =>
-                fetch(`${pkg}/v2/request/key/${timestamp.toString()}`, {
-                  headers: {
-                    Authorization: `Bearer ${jwt}`,
-                  },
-                })
-              )
-              .then((r) => r.json())
-              .then((json) => {
-                if (json.status !== "DONE" || json.proofStatus !== "VALID")
-                  throw new Error("not done and valid");
-                return json.key;
-              })
-              .catch((e) => console.log("error: ", e));
-          },
-        },
-      };
-
-      const irma = new IrmaCore({ debugging: true, session });
-
-      irma.use(IrmaClient);
-      irma.use(IrmaPopup);
-
-      const usk = await irma.start();
-      console.log("retrieved usk: ", usk);
-
-      const t0 = performance.now();
-
-      await unsealer.unseal(identifier, usk, writable);
-
-      const tDecrypt = performance.now() - t0;
-
-      console.log(`tDecrypt ${tDecrypt}$ ms`);
-      console.log(`average MB/s: ${inFile.size / (1000 * tDecrypt)}`);
-    } catch (e) {
-      console.log("error during unsealing: ", e);
-    }
-  }
-};
+    console.log(`operation took ${t}$ ms`)
+    console.log(`average MB/s: ${inFile.size / (1000 * t)}`)
+}
 
 window.onload = async () => {
-  const resp = await fetch(`${pkg}/v2/parameters`);
-  mpk = await resp.json().then((r) => r.publicKey);
-
-  console.log("retrieved public key: ", mpk);
-
-  mod = await import("@e4a/pg-wasm");
-  console.log("loaded WASM module");
-
-  const buttons = document.querySelectorAll("input");
-  buttons.forEach((btn) => btn.addEventListener("change", listener));
-};
+    const buttons = document.querySelectorAll('input')
+    buttons.forEach((btn) => btn.addEventListener('change', listener))
+}

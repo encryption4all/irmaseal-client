@@ -1,7 +1,4 @@
-import * as IrmaCore from '@privacybydesign/irma-core'
-import * as IrmaClient from '@privacybydesign/irma-client'
-import * as IrmaPopup from '@privacybydesign/irma-popup'
-import '@privacybydesign/irma-css'
+import { KeySorts, fetchKey, PKG_URL } from './utils'
 
 import { PolyfilledWritableStream } from 'web-streams-polyfill'
 
@@ -9,66 +6,11 @@ if (window.WritableStream == undefined) {
     window.WritableStream = PolyfilledWritableStream
 }
 
-const pkg = 'http://localhost:8087'
-
-const KeySorts = {
-    Encryption: 'key',
-    Signing: 'sign/key',
-}
-
-async function fetchKey(sort, keyRequest, timestamp) {
-    const session = {
-        url: pkg,
-        start: {
-            url: (o) => `${o.url}/v2/request/start`,
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(keyRequest),
-        },
-        result: {
-            url: (o, { sessionToken }) => `${o.url}/v2/request/jwt/${sessionToken}`,
-            parseResponse: (r) => {
-                return r
-                    .text()
-                    .then((jwt) =>
-                        fetch(
-                            `${pkg}/v2/request/${sort}${
-                                timestamp ? '/' + timestamp.toString() : ''
-                            }`,
-                            {
-                                headers: {
-                                    Authorization: `Bearer ${jwt}`,
-                                },
-                            }
-                        )
-                    )
-                    .then((r) => r.json())
-                    .then((json) => {
-                        if (json.status !== 'DONE' || json.proof_status !== 'VALID')
-                            throw new Error('not done and valid')
-                        return json.key
-                    })
-                    .catch((e) => console.log('error: ', e))
-            },
-        },
-    }
-
-    const irma = new IrmaCore({ debugging: true, session })
-
-    irma.use(IrmaClient)
-    irma.use(IrmaPopup)
-
-    const usk = await irma.start()
-    console.log('retrieved usk: ', usk)
-
-    return usk
-}
-
 window.onload = async () => {
     const mod = await import('@e4a/pg-wasm')
     console.log('loaded WASM module')
 
-    const mpk = await fetch(`${pkg}/v2/parameters`)
+    const mpk = await fetch(`${PKG_URL}/v2/parameters`)
         .then((r) => r.json())
         .then((j) => j.publicKey)
 
@@ -95,8 +37,8 @@ window.onload = async () => {
 
     console.log('retrieving signing key for Alice')
 
-    let pub_sign_key = await fetchKey(KeySorts.Signing, pub_sig_policy, undefined)
-    let priv_sign_key = await fetchKey(KeySorts.Signing, priv_sig_policy, undefined)
+    let pub_sign_key = await fetchKey(KeySorts.Signing, pub_sig_policy)
+    let priv_sign_key = await fetchKey(KeySorts.Signing, priv_sig_policy)
 
     console.log('got public signing key for Alice: ', pub_sign_key)
     console.log('got private signing key for Alice: ', priv_sign_key)
@@ -141,7 +83,7 @@ window.onload = async () => {
     console.log(`tEncrypt ${tEncrypt}$ ms`)
 
     /// Decryption
-    const vk = await fetch(`${pkg}/v2/sign/parameters`)
+    const vk = await fetch(`${PKG_URL}/v2/sign/parameters`)
         .then((r) => r.json())
         .then((j) => j.publicKey)
 
@@ -173,6 +115,8 @@ window.onload = async () => {
 
         const timestamp = header.get('Bob').ts
         const usk = await fetchKey(KeySorts.Encryption, keyRequest, timestamp)
+
+        console.log('retrieved usk: ', usk)
         const t0 = performance.now()
 
         const verified_sender = await unsealer.unseal('Bob', usk, unsealerWritable)

@@ -45,13 +45,17 @@ module.exports = {
         }),
         new CleanWebpackPlugin(),
         new HtmlWebpackPlugin({
-            filenameme: 'example_string.html',
+            filename: 'string.html',
             chunks: ['string'],
         }),
         new HtmlWebpackPlugin({
-            filename: 'example_file.html',
+            filename: 'file.html',
             template: './examples/file.html',
             chunks: ['file'],
         }),
+        new HtmlWebpackPlugin({
+            filename: 'index.html',
+            template: './index.html',
+        }),        
     ],
 }

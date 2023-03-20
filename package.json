@@ -1,9 +1,9 @@
 {
-  "name": "@e4a/irmaseal-example",
+  "name": "@e4a/pg-example",
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/encryption4all/irmaseal-example.git"
+    "url": "https://github.com/encryption4all/pg-example.git"
   },
   "devDependencies": {
     "@privacybydesign/irma-client": "^0.4.3",
