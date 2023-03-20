@@ -10,26 +10,26 @@
     "@privacybydesign/irma-core": "^0.4.3",
     "@privacybydesign/irma-css": "^0.4.3",
     "@privacybydesign/irma-popup": "^0.4.3",
-    "clean-webpack-plugin": "^3.0.0",
-    "css-loader": "^5.2.6",
-    "html-webpack-plugin": "^5.3.1",
+    "clean-webpack-plugin": "^4.0.0",
+    "css-loader": "^6.7.3",
+    "html-webpack-plugin": "^5.5.0",
     "https-browserify": "^1.0.0",
     "process": "^0.11.10",
-    "serve": "^13.0.2",
     "stream-http": "^3.2.0",
-    "streamsaver": "^2.0.5",
-    "style-loader": "^2.0.0",
+    "streamsaver": "^2.0.6",
+    "style-loader": "^3.3.2",
     "url": "^0.11.0",
-    "web-streams-polyfill": "^3.0.3",
-    "webpack": "^5.72.1",
-    "webpack-cli": "^4.7.2"
+    "web-streams-polyfill": "^3.2.1",
+    "webpack": "^5.76.2",
+    "webpack-cli": "^5.0.1",
+    "webpack-dev-server": "^4.13.1"
   },
   "dependencies": {
     "buffer": "^6.0.3",
-    "util": "^0.12.4"
+    "util": "^0.12.5"
   },
   "scripts": {
     "build": "webpack",
-    "dev": "webpack --watch & yarn serve dist"
+    "dev": "npx webpack serve"
   }
 }

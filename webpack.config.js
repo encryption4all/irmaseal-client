@@ -15,11 +15,15 @@ module.exports = {
     },
     output: {
         path: dist,
-        filename: 'example_[name].js',
+        filename: '[name].js',
     },
     experiments: {
         asyncWebAssembly: true,
         topLevelAwait: true,
+    },
+    devServer: {
+        compress: true,
+        port: 9000,
     },
     resolve: {
         fallback: {
@@ -56,6 +60,6 @@ module.exports = {
         new HtmlWebpackPlugin({
             filename: 'index.html',
             template: './index.html',
-        }),        
+        }),
     ],
 }
