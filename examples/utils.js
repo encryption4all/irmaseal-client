@@ -1,7 +1,7 @@
-import * as IrmaCore from '@privacybydesign/irma-core'
-import * as IrmaClient from '@privacybydesign/irma-client'
-import * as IrmaPopup from '@privacybydesign/irma-popup'
-import '@privacybydesign/irma-css'
+import * as YiviCore from '@privacybydesign/yivi-core'
+import * as YiviClient from '@privacybydesign/yivi-client'
+import * as YiviPopup from '@privacybydesign/yivi-popup'
+import '@privacybydesign/yivi-css'
 
 export const KeySorts = {
     Encryption: 'key',
@@ -47,8 +47,8 @@ export async function fetchKey(sort, keyRequest, timestamp = undefined) {
         },
     }
 
-    const irma = new IrmaCore({ debugging: true, session })
-    irma.use(IrmaClient)
-    irma.use(IrmaPopup)
-    return irma.start()
+    const yivi = new YiviCore({ debugging: true, session })
+    yivi.use(YiviClient)
+    yivi.use(YiviPopup)
+    return yivi.start()
 }

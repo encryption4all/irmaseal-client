@@ -1,0 +1,22 @@
+<html>
+    <head>
+        <meta charset="utf-8" />
+        <title>Encryption example</title>
+        <meta name="description" content="test" />
+    </head>
+    <body>
+        <label for="message">Enter a message: </label>
+        <input type="text" id="plain" name="message" value="plaintext" />
+        <input type="button" id="encrypt-btn" value="encrypt" /><br />
+        <label for="ciphertext">Ciphertext: </label>
+        <div name="ciphertext">
+            <textarea id="ciphertext" cols="100" rows="20" readonly> </textarea>
+        </div>
+        <input type="button" id="decrypt-btn" value="decrypt" /><br />
+        <label for="original">Original: </label>
+        <div><span id="original"></span></div>
+        <label for="sender">Sender identity: </label>
+        <div><span id="sender"></span></div>
+
+    </body>
+</html>

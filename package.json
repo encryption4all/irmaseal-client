@@ -6,10 +6,10 @@
     "url": "https://github.com/encryption4all/pg-example.git"
   },
   "devDependencies": {
-    "@privacybydesign/irma-client": "^0.4.3",
-    "@privacybydesign/irma-core": "^0.4.3",
-    "@privacybydesign/irma-css": "^0.4.3",
-    "@privacybydesign/irma-popup": "^0.4.3",
+    "@privacybydesign/yivi-client": "^0.1.0",
+    "@privacybydesign/yivi-core": "^0.1.0",
+    "@privacybydesign/yivi-css": "^0.1.0",
+    "@privacybydesign/yivi-popup": "^0.1.0",
     "clean-webpack-plugin": "^4.0.0",
     "css-loader": "^6.7.3",
     "html-webpack-plugin": "^5.5.0",

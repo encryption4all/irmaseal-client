@@ -50,6 +50,7 @@ module.exports = {
         new CleanWebpackPlugin(),
         new HtmlWebpackPlugin({
             filename: 'string.html',
+            template: './examples/string.html',
             chunks: ['string'],
         }),
         new HtmlWebpackPlugin({

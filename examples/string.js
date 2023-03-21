@@ -6,8 +6,18 @@ if (window.WritableStream == undefined) {
     window.WritableStream = PolyfilledWritableStream
 }
 
-window.onload = async () => {
-    const mod = await import('@e4a/pg-wasm')
+// This example uses demo credentials.
+// Anyone get retrieve an instance with custom data at the following URL:
+// https://privacybydesign.foundation/attribute-index/en/irma-demo.gemeente.personalData.html
+
+const modPromise = import('@e4a/pg-wasm')
+let ct
+
+async function encrypt() {
+    const input = document.getElementById('plain').value
+    console.log('input: ', input)
+
+    const mod = await modPromise
     console.log('loaded WASM module')
 
     const mpk = await fetch(`${PKG_URL}/v2/parameters`)
@@ -15,10 +25,6 @@ window.onload = async () => {
         .then((j) => j.publicKey)
 
     console.log('retrieved public key: ', mpk)
-
-    // This example uses demo credentials.
-    // Anyone get retrieve an instance with custom data at the following URL:
-    // https://privacybydesign.foundation/attribute-index/en/irma-demo.gemeente.personalData.html
 
     const enc_policy = {
         Bob: {
@@ -49,13 +55,7 @@ window.onload = async () => {
         priv_sign_key,
     }
 
-    console.log(
-        `Encrypting using policy: \n${enc_policy} and signing using:\n ${pub_sig_policy} and ${pub_sig_policy}`
-    )
-
-    const input = 'plaintext'
-
-    const sealerReadable = new ReadableStream({
+    const readable = new ReadableStream({
         start: (controller) => {
             const encoded = new TextEncoder().encode(input)
             controller.enqueue(encoded)
@@ -63,17 +63,17 @@ window.onload = async () => {
         },
     })
 
-    let output = new Uint8Array(0)
-    const sealerWritable = new WritableStream({
+    let ciphertext = new Uint8Array(0)
+    const writable = new WritableStream({
         write: (chunk) => {
-            output = new Uint8Array([...output, ...chunk])
+            ciphertext = new Uint8Array([...ciphertext, ...chunk])
         },
     })
 
     const t0 = performance.now()
 
     try {
-        await mod.seal(mpk, sealOptions, sealerReadable, sealerWritable)
+        await mod.seal(mpk, sealOptions, readable, writable)
     } catch (e) {
         console.log('error during sealing: ', e)
     }
@@ -82,52 +82,67 @@ window.onload = async () => {
 
     console.log(`tEncrypt ${tEncrypt}$ ms`)
 
-    /// Decryption
+    console.log(ciphertext)
+
+    const outputEl = document.getElementById('ciphertext')
+    outputEl.value = ciphertext
+    ct = ciphertext
+}
+
+async function decrypt() {
+    const mod = await modPromise
+
     const vk = await fetch(`${PKG_URL}/v2/sign/parameters`)
         .then((r) => r.json())
         .then((j) => j.publicKey)
 
     console.log('retrieved verification key: ', vk)
 
-    const unsealerReadable = new ReadableStream({
-        start: (controller) => {
-            controller.enqueue(output)
-            controller.close()
-        },
-    })
-
-    let original = ''
-    const unsealerWritable = new WritableStream({
-        write: (chunk) => {
-            original += new TextDecoder().decode(chunk)
-        },
-    })
-
     try {
-        const unsealer = await mod.Unsealer.new(unsealerReadable, vk)
+        const readable = new ReadableStream({
+            start: (controller) => {
+                controller.enqueue(ct)
+                controller.close()
+            },
+        })
+
+        let output = new Uint8Array(0)
+        const writable = new WritableStream({
+            write: (chunk) => {
+                output = new Uint8Array([...output, ...chunk])
+            },
+        })
+
+        const unsealer = await mod.Unsealer.new(readable, vk)
         const header = unsealer.inspect_header()
         console.log('header contains the following recipients: ', header)
 
         const keyRequest = {
             con: [{ t: 'irma-demo.sidn-pbdf.email.email', v: 'bob@example.com' }],
-            validity: 600, // 1 minute
         }
 
         const timestamp = header.get('Bob').ts
         const usk = await fetchKey(KeySorts.Encryption, keyRequest, timestamp)
 
         console.log('retrieved usk: ', usk)
+
         const t0 = performance.now()
-
-        const verified_sender = await unsealer.unseal('Bob', usk, unsealerWritable)
-
-        console.log('original: ', original)
-        console.log('signed: ', verified_sender)
-
+        const verified_sender = await unsealer.unseal('Bob', usk, writable)
         const tDecrypt = performance.now() - t0
-
         console.log(`tDecrypt ${tDecrypt}$ ms`)
+
+        const original = new TextDecoder().decode(output)
+        document.getElementById('original').textContent = original
+        document.getElementById('sender').textContent = JSON.stringify(verified_sender)
     } catch (e) {
         console.log('error during unsealing: ', e)
     }
+}
+
+window.onload = async () => {
+    const encBtn = document.getElementById('encrypt-btn')
+    encBtn.addEventListener('click', encrypt)
+
+    const decBtn = document.getElementById('decrypt-btn')
+    decBtn.addEventListener('click', decrypt)
 }
