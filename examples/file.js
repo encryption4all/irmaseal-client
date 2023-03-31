@@ -1,5 +1,4 @@
 import { KeySorts, fetchKey, PKG_URL } from './utils'
-
 import { PolyfilledWritableStream } from 'web-streams-polyfill'
 import { createWriteStream } from 'streamsaver'
 
@@ -14,7 +13,7 @@ if (window.WritableStream == undefined) {
 const modPromise = import('@e4a/pg-wasm')
 
 async function encryptFile(readable, writable) {
-    const mod = await modPromise
+    const { stream_seal } = await modPromise
 
     const resp = await fetch(`${PKG_URL}/v2/parameters`)
     const mpk = await resp.json().then((r) => r.publicKey)
@@ -49,14 +48,14 @@ async function encryptFile(readable, writable) {
     }
 
     try {
-        await mod.seal(mpk, sealOptions, readable, writable)
+        await stream_seal(mpk, sealOptions, readable, writable)
     } catch (e) {
         console.log('error during sealing: ', e)
     }
 }
 
 async function decryptFile(readable, writable) {
-    const mod = await modPromise
+    const { StreamUnsealer } = await modPromise
 
     const vk = await fetch(`${PKG_URL}/v2/sign/parameters`)
         .then((r) => r.json())
@@ -64,7 +63,7 @@ async function decryptFile(readable, writable) {
 
     console.log('retrieved verification key: ', vk)
 
-    const unsealer = await mod.Unsealer.new(readable, vk)
+    const unsealer = await StreamUnsealer.new(readable, vk)
     const recipients = unsealer.inspect_header()
     console.log('header contains the following recipients', recipients)
 
@@ -76,7 +75,8 @@ async function decryptFile(readable, writable) {
     const timestamp = recipients.get('Bob').ts
     const usk = await fetchKey(KeySorts.Encryption, keyRequest, timestamp)
     try {
-        await unsealer.unseal('Bob', usk, writable)
+        const pol = await unsealer.unseal('Bob', usk, writable)
+        console.log('pol: ', pol)
     } catch (e) {
         console.log('error during unsealing: ', e)
     }

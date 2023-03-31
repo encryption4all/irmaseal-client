@@ -1,11 +1,5 @@
 import { KeySorts, fetchKey, PKG_URL } from './utils'
 
-import { PolyfilledWritableStream } from 'web-streams-polyfill'
-
-if (window.WritableStream == undefined) {
-    window.WritableStream = PolyfilledWritableStream
-}
-
 // This example uses demo credentials.
 // Anyone get retrieve an instance with custom data at the following URL:
 // https://privacybydesign.foundation/attribute-index/en/irma-demo.gemeente.personalData.html
@@ -17,7 +11,7 @@ async function encrypt() {
     const input = document.getElementById('plain').value
     console.log('input: ', input)
 
-    const mod = await modPromise
+    const { seal } = await modPromise
     console.log('loaded WASM module')
 
     const mpk = await fetch(`${PKG_URL}/v2/parameters`)
@@ -55,25 +49,11 @@ async function encrypt() {
         priv_sign_key,
     }
 
-    const readable = new ReadableStream({
-        start: (controller) => {
-            const encoded = new TextEncoder().encode(input)
-            controller.enqueue(encoded)
-            controller.close()
-        },
-    })
-
-    let ciphertext = new Uint8Array(0)
-    const writable = new WritableStream({
-        write: (chunk) => {
-            ciphertext = new Uint8Array([...ciphertext, ...chunk])
-        },
-    })
-
+    const encoded = new TextEncoder().encode(input)
     const t0 = performance.now()
 
     try {
-        await mod.seal(mpk, sealOptions, readable, writable)
+        ct = await seal(mpk, sealOptions, encoded)
     } catch (e) {
         console.log('error during sealing: ', e)
     }
@@ -85,12 +65,11 @@ async function encrypt() {
     console.log(ciphertext)
 
     const outputEl = document.getElementById('ciphertext')
-    outputEl.value = ciphertext
-    ct = ciphertext
+    outputEl.value = ct
 }
 
 async function decrypt() {
-    const mod = await modPromise
+    const { Unsealer } = await modPromise
 
     const vk = await fetch(`${PKG_URL}/v2/sign/parameters`)
         .then((r) => r.json())
@@ -99,21 +78,7 @@ async function decrypt() {
     console.log('retrieved verification key: ', vk)
 
     try {
-        const readable = new ReadableStream({
-            start: (controller) => {
-                controller.enqueue(ct)
-                controller.close()
-            },
-        })
-
-        let output = new Uint8Array(0)
-        const writable = new WritableStream({
-            write: (chunk) => {
-                output = new Uint8Array([...output, ...chunk])
-            },
-        })
-
-        const unsealer = await mod.Unsealer.new(readable, vk)
+        const unsealer = await Unsealer.new(ct, vk)
         const header = unsealer.inspect_header()
         console.log('header contains the following recipients: ', header)
 
@@ -127,9 +92,11 @@ async function decrypt() {
         console.log('retrieved usk: ', usk)
 
         const t0 = performance.now()
-        const verified_sender = await unsealer.unseal('Bob', usk, writable)
+        const result = await unsealer.unseal('Bob', usk, ct)
         const tDecrypt = performance.now() - t0
         console.log(`tDecrypt ${tDecrypt}$ ms`)
+        let verified_sender = result.policy
+        let output = result.plain
 
         const original = new TextDecoder().decode(output)
         document.getElementById('original').textContent = original
