@@ -47,7 +47,7 @@ export async function fetchKey(sort, keyRequest, timestamp = undefined) {
         },
     }
 
-    const yivi = new YiviCore({ debugging: true, session })
+    const yivi = new YiviCore({ debugging: false, session })
     yivi.use(YiviClient)
     yivi.use(YiviPopup)
     return yivi.start()

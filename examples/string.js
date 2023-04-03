@@ -12,7 +12,7 @@ async function encrypt() {
     console.log('input: ', input)
 
     const { seal } = await modPromise
-    console.log('loaded WASM module')
+    console.log('loaded WASM module: ', seal)
 
     const mpk = await fetch(`${PKG_URL}/v2/parameters`)
         .then((r) => r.json())
@@ -54,18 +54,16 @@ async function encrypt() {
 
     try {
         ct = await seal(mpk, sealOptions, encoded)
+        const tEncrypt = performance.now() - t0
+
+        console.log(`tEncrypt ${tEncrypt}$ ms`)
+        console.log('ct: ', ct)
+
+        const outputEl = document.getElementById('ciphertext')
+        outputEl.value = ct
     } catch (e) {
         console.log('error during sealing: ', e)
     }
-
-    const tEncrypt = performance.now() - t0
-
-    console.log(`tEncrypt ${tEncrypt}$ ms`)
-
-    console.log(ciphertext)
-
-    const outputEl = document.getElementById('ciphertext')
-    outputEl.value = ct
 }
 
 async function decrypt() {
@@ -92,15 +90,15 @@ async function decrypt() {
         console.log('retrieved usk: ', usk)
 
         const t0 = performance.now()
-        const result = await unsealer.unseal('Bob', usk, ct)
-        const tDecrypt = performance.now() - t0
-        console.log(`tDecrypt ${tDecrypt}$ ms`)
-        let verified_sender = result.policy
-        let output = result.plain
+        const { plain, policy } = await unsealer.unseal('Bob', usk, ct)
 
-        const original = new TextDecoder().decode(output)
+        const tDecrypt = performance.now() - t0
+
+        console.log(`tDecrypt ${tDecrypt}$ ms`)
+
+        const original = new TextDecoder().decode(plain)
         document.getElementById('original').textContent = original
-        document.getElementById('sender').textContent = JSON.stringify(verified_sender)
+        document.getElementById('sender').textContent = JSON.stringify(policy)
     } catch (e) {
         console.log('error during unsealing: ', e)
     }

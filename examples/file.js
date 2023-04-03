@@ -13,7 +13,7 @@ if (window.WritableStream == undefined) {
 const modPromise = import('@e4a/pg-wasm')
 
 async function encryptFile(readable, writable) {
-    const { stream_seal } = await modPromise
+    const { sealStream } = await modPromise
 
     const resp = await fetch(`${PKG_URL}/v2/parameters`)
     const mpk = await resp.json().then((r) => r.publicKey)
@@ -48,7 +48,7 @@ async function encryptFile(readable, writable) {
     }
 
     try {
-        await stream_seal(mpk, sealOptions, readable, writable)
+        await sealStream(mpk, sealOptions, readable, writable)
     } catch (e) {
         console.log('error during sealing: ', e)
     }
