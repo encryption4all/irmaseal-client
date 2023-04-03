@@ -25,6 +25,7 @@
     "webpack-dev-server": "^4.13.1"
   },
   "dependencies": {
+    "@e4a/pg-wasm": "^0.3.0-rc.1",
     "buffer": "^6.0.3",
     "util": "^0.12.5"
   },
