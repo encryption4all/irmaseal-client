@@ -6,10 +6,10 @@
     "url": "https://github.com/encryption4all/pg-example.git"
   },
   "devDependencies": {
-    "@privacybydesign/yivi-client": "^0.1.0",
-    "@privacybydesign/yivi-core": "^0.1.0",
-    "@privacybydesign/yivi-css": "^0.1.0",
-    "@privacybydesign/yivi-popup": "^0.1.0",
+    "@privacybydesign/yivi-client": "^0.1.1",
+    "@privacybydesign/yivi-core": "^0.1.1",
+    "@privacybydesign/yivi-css": "^0.1.1",
+    "@privacybydesign/yivi-popup": "^0.1.1",
     "clean-webpack-plugin": "^4.0.0",
     "css-loader": "^6.7.3",
     "html-webpack-plugin": "^5.5.0",
@@ -20,9 +20,9 @@
     "style-loader": "^3.3.2",
     "url": "^0.11.0",
     "web-streams-polyfill": "^3.2.1",
-    "webpack": "^5.76.2",
+    "webpack": "^5.77.0",
     "webpack-cli": "^5.0.1",
-    "webpack-dev-server": "^4.13.1"
+    "webpack-dev-server": "^4.13.2"
   },
   "dependencies": {
     "@e4a/pg-wasm": "^0.3.0-rc.2",

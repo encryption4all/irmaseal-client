@@ -57,37 +57,37 @@
   resolved "https://registry.yarnpkg.com/@leichtgewicht/ip-codec/-/ip-codec-2.0.4.tgz#b2ac626d6cb9c8718ab459166d4bb405b8ffa78b"
   integrity sha512-Hcv+nVC0kZnQ3tD9GVu5xSMR4VVYOteQIr/hwFPVEvPdlXqgGEuRjiheChHgdM+JyqdgNcmzZOX/tnl0JOiI7A==
 
-"@privacybydesign/yivi-client@^0.1.0":
-  version "0.1.0"
-  resolved "https://registry.yarnpkg.com/@privacybydesign/yivi-client/-/yivi-client-0.1.0.tgz#bdc1640fee8692d06d74ef6bbdce0c96c4674049"
-  integrity sha512-Gp1fLUWvs6CtFcdrKLupBN6V9P7P/7Cbb4PVu1z0EZiX2foFwJmPRHUikuav7TsYIikTnBvfjKIykqVxVYLCVQ==
+"@privacybydesign/yivi-client@^0.1.1":
+  version "0.1.1"
+  resolved "https://registry.yarnpkg.com/@privacybydesign/yivi-client/-/yivi-client-0.1.1.tgz#89832738b5118d982f3426aa0717aa9cacf6fc7f"
+  integrity sha512-nMAjcYuLjK/kIT2pTsL5z0SnbDuEwHJPo3pBwxKvIXsNhXmCOq5uwZzLmVI2fUwBX5ibJFaYvi8IZkH0iYtqag==
   dependencies:
     deepmerge "^4.2.2"
     eventsource "^1.0.7"
     isomorphic-fetch "^3.0.0"
 
-"@privacybydesign/yivi-core@^0.1.0":
-  version "0.1.0"
-  resolved "https://registry.yarnpkg.com/@privacybydesign/yivi-core/-/yivi-core-0.1.0.tgz#697f28a877159ad779f4435c1912f66a31bae346"
-  integrity sha512-NjNjSCAYIxLGe25E8Fdvzrs5E7yYcDrQsHgspGmls8jNEUlrSyMGn39zoa7IK8KJwD7hV+Szj6Bxo3kK5Ylsyg==
+"@privacybydesign/yivi-core@^0.1.1":
+  version "0.1.1"
+  resolved "https://registry.yarnpkg.com/@privacybydesign/yivi-core/-/yivi-core-0.1.1.tgz#486e2db45afef6ff0a39b6c566a665db1af2e94c"
+  integrity sha512-3/73NCU02Rf0TjgSELVo8YgKjRphViWdrnFUE58cVR87G++4Hzq4GaVurvDcYVmpN6MWT8qL31P5nvTTQGEI0g==
 
-"@privacybydesign/yivi-css@^0.1.0":
-  version "0.1.0"
-  resolved "https://registry.yarnpkg.com/@privacybydesign/yivi-css/-/yivi-css-0.1.0.tgz#abc9e4e604da2e67324ad8933d4094a8bbe81b59"
-  integrity sha512-9rMFPAc4VpN3Wtu4EOXe+TPIvhetb7tYIm0klt5PevNMEVHIEJuuqqyEFCxO8f0gJPj9NYP5umc52aue3bjTTA==
+"@privacybydesign/yivi-css@^0.1.1":
+  version "0.1.1"
+  resolved "https://registry.yarnpkg.com/@privacybydesign/yivi-css/-/yivi-css-0.1.1.tgz#7d792218735cd58783a7c0db815427387d85ece6"
+  integrity sha512-8mq5SFRNa9Nxr0W5Lp+lK2grSJWLLshi7bjn6zHhbl4wv40AaJe9baYZ56hjAHABOHYfUvQw/HrlFYl82PzcrQ==
 
-"@privacybydesign/yivi-popup@^0.1.0":
-  version "0.1.0"
-  resolved "https://registry.yarnpkg.com/@privacybydesign/yivi-popup/-/yivi-popup-0.1.0.tgz#7201104a8f8edd7f2710a93edaf18e457433cc2a"
-  integrity sha512-Z/fhCkkMHBytB8tVEcIJe7IiTvS5oePXCO2CtU5woQ5+G3CUwaV4w6X/8q7EH5sBeRV1FCRrnbycBaYy0uEBMw==
+"@privacybydesign/yivi-popup@^0.1.1":
+  version "0.1.1"
+  resolved "https://registry.yarnpkg.com/@privacybydesign/yivi-popup/-/yivi-popup-0.1.1.tgz#efc4b10e63b7a0150472b3443b0276d68245bf99"
+  integrity sha512-qrq5lftG0hRY0mPmGdyrt0OgG7Or+FHQ1KrvocR8GDeBbpBERx0Ua9NuaILexb/lEgVO3i26n2TiGRXIiB7+FQ==
   dependencies:
-    "@privacybydesign/yivi-web" "^0.1.0"
+    "@privacybydesign/yivi-web" "^0.1.1"
     deepmerge "^4.2.2"
 
-"@privacybydesign/yivi-web@^0.1.0":
-  version "0.1.0"
-  resolved "https://registry.yarnpkg.com/@privacybydesign/yivi-web/-/yivi-web-0.1.0.tgz#a3e1c7881217a4816c52d6b55dd1da8cd2ca393b"
-  integrity sha512-qVCWXn3TEBKbVAP7ZhTA82ovqX3hekhCqMegbOvpV8zB7NF/IdA7N+17hjcsL/OAUDjqqiMjdl2/Uk6lP3jhHA==
+"@privacybydesign/yivi-web@^0.1.1":
+  version "0.1.1"
+  resolved "https://registry.yarnpkg.com/@privacybydesign/yivi-web/-/yivi-web-0.1.1.tgz#4a78030e36e945f014d80ab9b2cc0c30b81b641d"
+  integrity sha512-nmuRAfnA/24jjWDk53Myc1EaDA5q9gKNnviZQUH6eCxjZC7C/hKEYcqRb7+YXQ4OwBY80kdzf1G8X5Ovj8QPQA==
   dependencies:
     deepmerge "^4.2.2"
     qrcode "^1.4.2"
@@ -3014,10 +3014,10 @@ webpack-dev-middleware@^5.3.1:
     range-parser "^1.2.1"
     schema-utils "^4.0.0"
 
-webpack-dev-server@^4.13.1:
-  version "4.13.1"
-  resolved "https://registry.yarnpkg.com/webpack-dev-server/-/webpack-dev-server-4.13.1.tgz#6417a9b5d2f528e7644b68d6ed335e392dccffe8"
-  integrity sha512-5tWg00bnWbYgkN+pd5yISQKDejRBYGEw15RaEEslH+zdbNDxxaZvEAO2WulaSaFKb5n3YG8JXsGaDsut1D0xdA==
+webpack-dev-server@^4.13.2:
+  version "4.13.2"
+  resolved "https://registry.yarnpkg.com/webpack-dev-server/-/webpack-dev-server-4.13.2.tgz#d97445481d78691efe6d9a3b230833d802fc31f9"
+  integrity sha512-5i6TrGBRxG4vnfDpB6qSQGfnB6skGBXNL5/542w2uRGLimX6qeE5BQMLrzIC3JYV/xlGOv+s+hTleI9AZKUQNw==
   dependencies:
     "@types/bonjour" "^3.5.9"
     "@types/connect-history-api-fallback" "^1.3.5"
@@ -3063,10 +3063,10 @@ webpack-sources@^3.2.3:
   resolved "https://registry.npmjs.org/webpack-sources/-/webpack-sources-3.2.3.tgz#2d4daab8451fd4b240cc27055ff6a0c2ccea0cde"
   integrity sha512-/DyMEOrDgLKKIG0fmvtz+4dUX/3Ghozwgm6iPp8KRhvn+eQf9+Q7GWxVNMk3+uCPWfdXYC4ExGBckIXdFEfH1w==
 
-webpack@^5.76.2:
-  version "5.76.2"
-  resolved "https://registry.yarnpkg.com/webpack/-/webpack-5.76.2.tgz#6f80d1c1d1e3bf704db571b2504a0461fac80230"
-  integrity sha512-Th05ggRm23rVzEOlX8y67NkYCHa9nTNcwHPBhdg+lKG+mtiW7XgggjAeeLnADAe7mLjJ6LUNfgHAuRRh+Z6J7w==
+webpack@^5.77.0:
+  version "5.77.0"
+  resolved "https://registry.yarnpkg.com/webpack/-/webpack-5.77.0.tgz#dea3ad16d7ea6b84aa55fa42f4eac9f30e7eb9b4"
+  integrity sha512-sbGNjBr5Ya5ss91yzjeJTLKyfiwo5C628AFjEa6WSXcZa4E+F57om3Cc8xLb1Jh0b243AWuSYRf3dn7HVeFQ9Q==
   dependencies:
     "@types/eslint-scope" "^3.7.3"
     "@types/estree" "^0.0.51"
