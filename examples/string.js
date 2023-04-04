@@ -1,152 +1,113 @@
-import * as IrmaCore from "@privacybydesign/irma-core";
-import * as IrmaClient from "@privacybydesign/irma-client";
-import * as IrmaPopup from "@privacybydesign/irma-popup";
-import "@privacybydesign/irma-css";
+import { KeySorts, fetchKey, PKG_URL } from './utils'
 
-import { PolyfilledWritableStream } from "web-streams-polyfill";
+// This example uses demo credentials.
+// Anyone get retrieve an instance with custom data at the following URL:
+// https://privacybydesign.foundation/attribute-index/en/irma-demo.gemeente.personalData.html
 
-if (window.WritableStream == undefined) {
-  window.WritableStream = PolyfilledWritableStream;
+const modPromise = import('@e4a/pg-wasm')
+let ct
+
+async function encrypt() {
+    const input = document.getElementById('plain').value
+    console.log('input: ', input)
+
+    const { seal } = await modPromise
+    console.log('loaded WASM module: ', seal)
+
+    const mpk = await fetch(`${PKG_URL}/v2/parameters`)
+        .then((r) => r.json())
+        .then((j) => j.publicKey)
+
+    console.log('retrieved public key: ', mpk)
+
+    const enc_policy = {
+        Bob: {
+            ts: Math.round(Date.now() / 1000),
+            con: [{ t: 'irma-demo.sidn-pbdf.email.email', v: 'bob@example.com' }],
+        },
+    }
+
+    const pub_sig_policy = {
+        con: [{ t: 'irma-demo.gemeente.personalData.fullname', v: 'Alice' }],
+    }
+
+    const priv_sig_policy = {
+        con: [{ t: 'irma-demo.gemeente.personalData.bsn', v: '1234' }],
+    }
+
+    console.log('retrieving signing key for Alice')
+
+    let pub_sign_key = await fetchKey(KeySorts.Signing, pub_sig_policy)
+    let priv_sign_key = await fetchKey(KeySorts.Signing, priv_sig_policy)
+
+    console.log('got public signing key for Alice: ', pub_sign_key)
+    console.log('got private signing key for Alice: ', priv_sign_key)
+
+    const sealOptions = {
+        policy: enc_policy,
+        pub_sign_key,
+        priv_sign_key,
+    }
+
+    const encoded = new TextEncoder().encode(input)
+    const t0 = performance.now()
+
+    try {
+        ct = await seal(mpk, sealOptions, encoded)
+        const tEncrypt = performance.now() - t0
+
+        console.log(`tEncrypt ${tEncrypt}$ ms`)
+        console.log('ct: ', ct)
+
+        const outputEl = document.getElementById('ciphertext')
+        outputEl.value = ct
+    } catch (e) {
+        console.log('error during sealing: ', e)
+    }
 }
 
-const pkg = "https://main.irmaseal-pkg.ihub.ru.nl";
-const test_id = "alice";
+async function decrypt() {
+    const { Unsealer } = await modPromise
+
+    const vk = await fetch(`${PKG_URL}/v2/sign/parameters`)
+        .then((r) => r.json())
+        .then((j) => j.publicKey)
+
+    console.log('retrieved verification key: ', vk)
+
+    try {
+        const unsealer = await Unsealer.new(ct, vk)
+        const header = unsealer.inspect_header()
+        console.log('header contains the following recipients: ', header)
+
+        const keyRequest = {
+            con: [{ t: 'irma-demo.sidn-pbdf.email.email', v: 'bob@example.com' }],
+        }
+
+        const timestamp = header.get('Bob').ts
+        const usk = await fetchKey(KeySorts.Encryption, keyRequest, timestamp)
+
+        console.log('retrieved usk: ', usk)
+
+        const t0 = performance.now()
+        const { plain, policy } = await unsealer.unseal('Bob', usk, ct)
+
+        const tDecrypt = performance.now() - t0
+
+        console.log(`tDecrypt ${tDecrypt}$ ms`)
+
+        const original = new TextDecoder().decode(plain)
+        document.getElementById('original').textContent = original
+        document.getElementById('sender').textContent = JSON.stringify(policy)
+    } catch (e) {
+        console.log('error during unsealing: ', e)
+    }
+}
 
 window.onload = async () => {
-  const resp = await fetch(`${pkg}/v2/parameters`);
-  const mpk = await resp.json().then((r) => r.publicKey);
+    const encBtn = document.getElementById('encrypt-btn')
+    encBtn.addEventListener('click', encrypt)
 
-  console.log("retrieved public key: ", mpk);
-
-  const mod = await import("@e4a/irmaseal-wasm-bindings");
-  console.log("loaded WASM module");
-
-  // This example uses a demo credential.
-  // Anyone get retrieve an instance with custom data at the following URL:
-  // https://privacybydesign.foundation/attribute-index/en/irma-demo.gemeente.personalData.html
-  const policies = {
-    [test_id]: {
-      ts: Math.round(Date.now() / 1000),
-      con: [{ t: "irma-demo.gemeente.personalData.fullname", v: "Alice" }],
-    },
-  };
-
-  console.log("Encrypting using policies: ", policies);
-
-  const input = "plaintext";
-
-  const sealerReadable = new ReadableStream({
-    start: (controller) => {
-      const encoded = new TextEncoder().encode(input);
-      controller.enqueue(encoded);
-      controller.close();
-    },
-  });
-
-  let output = new Uint8Array(0);
-  const sealerWritable = new WritableStream({
-    write: (chunk) => {
-      output = new Uint8Array([...output, ...chunk]);
-    },
-  });
-
-  const t0 = performance.now();
-
-  try {
-    await mod.seal(mpk, policies, sealerReadable, sealerWritable);
-  } catch (e) {
-    console.log("error during sealing: ", e);
-  }
-
-  const tEncrypt = performance.now() - t0;
-
-  console.log(`tEncrypt ${tEncrypt}$ ms`);
-
-  /// Decryption
-
-  const unsealerReadable = new ReadableStream({
-    start: (controller) => {
-      controller.enqueue(output);
-      controller.close();
-    },
-  });
-
-  let original = "";
-  const unsealerWritable = new WritableStream({
-    write: (chunk) => {
-      original += new TextDecoder().decode(chunk);
-    },
-  });
-
-  try {
-    const unsealer = await mod.Unsealer.new(unsealerReadable);
-    const hidden = unsealer.get_hidden_policies();
-    console.log("hidden policy: ", hidden);
-
-    const keyRequest = {
-      con: [{ t: "irma-demo.gemeente.personalData.fullname", v: "Alice" }],
-      validity: 600, // 1 minute
-    };
-
-    const timestamp = hidden[test_id].ts;
-
-    const session = {
-      url: pkg,
-      start: {
-        url: (o) => `${o.url}/v2/request/start`,
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(keyRequest),
-      },
-      mapping: {
-        // temporary fix
-        sessionPtr: (r) => {
-          const ptr = r.sessionPtr;
-          ptr.u = `https://ihub.ru.nl/irma/1/${ptr.u}`;
-          return ptr;
-        },
-      },
-      result: {
-        url: (o, { sessionToken }) => `${o.url}/v2/request/jwt/${sessionToken}`,
-        parseResponse: (r) => {
-          return r
-            .text()
-            .then((jwt) =>
-              fetch(`${pkg}/v2/request/key/${timestamp.toString()}`, {
-                headers: {
-                  Authorization: `Bearer ${jwt}`,
-                },
-              })
-            )
-            .then((r) => r.json())
-            .then((json) => {
-              if (json.status !== "DONE" || json.proofStatus !== "VALID")
-                throw new Error("not done and valid");
-              return json.key;
-            })
-            .catch((e) => console.log("error: ", e));
-        },
-      },
-    };
-
-    const irma = new IrmaCore({ debugging: true, session });
-
-    irma.use(IrmaClient);
-    irma.use(IrmaPopup);
-
-    const usk = await irma.start();
-    console.log("retrieved usk: ", usk);
-
-    const t0 = performance.now();
-
-    await unsealer.unseal(test_id, usk, unsealerWritable);
-
-    console.log("original: ", original);
-
-    const tDecrypt = performance.now() - t0;
-
-    console.log(`tDecrypt ${tDecrypt}$ ms`);
-  } catch (e) {
-    console.log("error during unsealing: ", e);
-  }
-};
+    const decBtn = document.getElementById('decrypt-btn')
+    decBtn.addEventListener('click', decrypt)
+}

@@ -15,11 +15,15 @@ module.exports = {
     },
     output: {
         path: dist,
-        filename: 'example_[name].js',
+        filename: '[name].js',
     },
     experiments: {
-        syncWebAssembly: true,
+        asyncWebAssembly: true,
         topLevelAwait: true,
+    },
+    devServer: {
+        compress: true,
+        port: 9000,
     },
     resolve: {
         fallback: {
@@ -45,13 +49,18 @@ module.exports = {
         }),
         new CleanWebpackPlugin(),
         new HtmlWebpackPlugin({
-            filenameme: 'example_string.html',
+            filename: 'string.html',
+            template: './examples/string.html',
             chunks: ['string'],
         }),
         new HtmlWebpackPlugin({
-            filename: 'example_file.html',
+            filename: 'file.html',
             template: './examples/file.html',
             chunks: ['file'],
+        }),
+        new HtmlWebpackPlugin({
+            filename: 'index.html',
+            template: './index.html',
         }),
     ],
 }
