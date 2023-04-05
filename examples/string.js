@@ -90,7 +90,7 @@ async function decrypt() {
         console.log('retrieved usk: ', usk)
 
         const t0 = performance.now()
-        const { plain, policy } = await unsealer.unseal('Bob', usk, ct)
+        const [plain, policy] = await unsealer.unseal('Bob', usk)
 
         const tDecrypt = performance.now() - t0
 
