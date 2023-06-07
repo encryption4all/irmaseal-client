@@ -20,33 +20,33 @@ async function encrypt() {
 
     console.log('retrieved public key: ', mpk)
 
-    const enc_policy = {
+    const policy = {
         Bob: {
             ts: Math.round(Date.now() / 1000),
             con: [{ t: 'irma-demo.sidn-pbdf.email.email', v: 'bob@example.com' }],
         },
     }
 
-    const pub_sig_policy = {
+    const pubSignPolicy = {
         con: [{ t: 'irma-demo.gemeente.personalData.fullname', v: 'Alice' }],
     }
 
-    const priv_sig_policy = {
+    const privSignPolicy = {
         con: [{ t: 'irma-demo.gemeente.personalData.bsn', v: '1234' }],
     }
 
     console.log('retrieving signing key for Alice')
 
-    let pub_sign_key = await fetchKey(KeySorts.Signing, pub_sig_policy)
-    let priv_sign_key = await fetchKey(KeySorts.Signing, priv_sig_policy)
+    let pubSignKey = await fetchKey(KeySorts.Signing, pubSignPolicy)
+    let privSignKey = await fetchKey(KeySorts.Signing, privSignPolicy)
 
-    console.log('got public signing key for Alice: ', pub_sign_key)
-    console.log('got private signing key for Alice: ', priv_sign_key)
+    console.log('got public signing key for Alice: ', pubSignKey)
+    console.log('got private signing key for Alice: ', privSignKey)
 
     const sealOptions = {
-        policy: enc_policy,
-        pub_sign_key,
-        priv_sign_key,
+        policy,
+        pubSignKey,
+        privSignKey,
     }
 
     const encoded = new TextEncoder().encode(input)
@@ -79,6 +79,8 @@ async function decrypt() {
         const unsealer = await Unsealer.new(ct, vk)
         const header = unsealer.inspect_header()
         console.log('header contains the following recipients: ', header)
+        const sender = unsealer.public_identity()
+        console.log('the header was signed using: ', sender)
 
         const keyRequest = {
             con: [{ t: 'irma-demo.sidn-pbdf.email.email', v: 'bob@example.com' }],

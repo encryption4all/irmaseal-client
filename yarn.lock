@@ -7,10 +7,10 @@
   resolved "https://registry.npmjs.org/@discoveryjs/json-ext/-/json-ext-0.5.3.tgz#90420f9f9c6d3987f176a19a7d8e764271a2f55d"
   integrity sha512-Fxt+AfXgjMoin2maPIYzFZnQjAXjAL0PHscM5pRTtatFqB+vZxAM9tLp2Optnuw3QOQC40jTNeGYFOMvyf7v9g==
 
-"@e4a/pg-wasm@^0.3.0-rc.3":
-  version "0.3.0-rc.3"
-  resolved "https://registry.yarnpkg.com/@e4a/pg-wasm/-/pg-wasm-0.3.0-rc.3.tgz#fcfef3ec1255e4f1d71145e055ff7fa3ab8ffd14"
-  integrity sha512-zZg532DMw+AFrL56AtdGhuGivHbXqaxfw/dyqkTS3UVjOmIxsjLr6iHecc+LFzJJK7ng/zkH56rCESzagVSqlg==
+"@e4a/pg-wasm@^0.3.0-rc.4":
+  version "0.3.0-rc.4"
+  resolved "https://registry.yarnpkg.com/@e4a/pg-wasm/-/pg-wasm-0.3.0-rc.4.tgz#ffcaa9e9a59cb1aafcf93320fbaa1b0dceef304b"
+  integrity sha512-cm150n7PAPYJlM+I2kNAxohnc6levYWLuMALdnJ9HGmzTpY9yYMci4q7Q+MWw6as7bg8Ey2WjXasxeJ459qoQg==
 
 "@jridgewell/gen-mapping@^0.3.0":
   version "0.3.2"

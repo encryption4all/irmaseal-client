@@ -8,7 +8,7 @@ export const KeySorts = {
     Signing: 'sign/key',
 }
 
-export const PKG_URL = 'https://main.irmaseal-pkg.ihub.ru.nl'
+export const PKG_URL = 'https://main.postguard.ihub.ru.nl/pkg'
 
 export async function fetchKey(sort, keyRequest, timestamp = undefined) {
     const session = {
@@ -18,14 +18,6 @@ export async function fetchKey(sort, keyRequest, timestamp = undefined) {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(keyRequest),
-        },
-        mapping: {
-            // temporary fix
-            sessionPtr: (r) => {
-                const ptr = r.sessionPtr
-                ptr.u = `https://ihub.ru.nl/irma/1/${ptr.u}`
-                return ptr
-            },
         },
         result: {
             url: (o, { sessionToken }) => `${o.url}/v2/request/jwt/${sessionToken}`,
