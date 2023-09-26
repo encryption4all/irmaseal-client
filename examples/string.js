@@ -37,9 +37,12 @@ async function encrypt() {
 
     console.log('retrieving signing key for Alice')
 
-    let pubSignKey = await fetchKey(KeySorts.Signing, pubSignPolicy)
-    let privSignKey = await fetchKey(KeySorts.Signing, privSignPolicy)
-
+    let {pubSignKey, privSignKey} = await fetchKey(
+        KeySorts.Signing,
+        { con: [...pubSignPolicy.con, ...privSignPolicy.con] },
+        undefined,
+        { pubSignId: pubSignPolicy.con, privSignId: privSignPolicy.con }
+    )
     console.log('got public signing key for Alice: ', pubSignKey)
     console.log('got private signing key for Alice: ', privSignKey)
 

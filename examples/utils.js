@@ -10,7 +10,12 @@ export const KeySorts = {
 
 export const PKG_URL = 'https://main.postguard.ihub.ru.nl/pkg'
 
-export async function fetchKey(sort, keyRequest, timestamp = undefined) {
+export async function fetchKey(
+    sort,
+    keyRequest,
+    timestamp = undefined,
+    signingKeyRequest = undefined
+) {
     const session = {
         url: PKG_URL,
         start: {
@@ -30,9 +35,14 @@ export async function fetchKey(sort, keyRequest, timestamp = undefined) {
                                 timestamp ? '/' + timestamp.toString() : ''
                             }`,
                             {
+                                method: sort === KeySorts.Encryption ? 'GET' : 'POST',
                                 headers: {
                                     Authorization: `Bearer ${jwt}`,
+                                    'Content-Type': 'application/json',
                                 },
+                                ...(signingKeyRequest && {
+                                    body: JSON.stringify({ ...signingKeyRequest }),
+                                }),
                             }
                         )
                     )
@@ -40,7 +50,9 @@ export async function fetchKey(sort, keyRequest, timestamp = undefined) {
                     .then((json) => {
                         if (json.status !== 'DONE' || json.proofStatus !== 'VALID')
                             throw new Error('not done and valid')
-                        return json.key
+                        return sort === KeySorts.Encryption
+                            ? json.key
+                            : { pubSignKey: json.pubSignKey, privSignKey: json.privSignKey }
                     })
                     .catch((e) => console.log('error: ', e))
             },
