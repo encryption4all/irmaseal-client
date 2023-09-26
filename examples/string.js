@@ -27,21 +27,18 @@ async function encrypt() {
         },
     }
 
-    const pubSignPolicy = {
-        con: [{ t: 'irma-demo.gemeente.personalData.fullname', v: 'Alice' }],
-    }
+    // This policy is visible to everyone.
+    const pubSignId = [{ t: 'irma-demo.gemeente.personalData.fullname', v: 'Alice' }]
 
-    const privSignPolicy = {
-        con: [{ t: 'irma-demo.gemeente.personalData.bsn', v: '1234' }],
-    }
+    // This policy is only visible to recipients.
+    const privSignId = [{ t: 'irma-demo.gemeente.personalData.bsn', v: '1234' }]
 
-    console.log('retrieving signing key for Alice')
-
-    let {pubSignKey, privSignKey} = await fetchKey(
+    // We retrieve keys for these policies.
+    let { pubSignKey, privSignKey } = await fetchKey(
         KeySorts.Signing,
-        { con: [...pubSignPolicy.con, ...privSignPolicy.con] },
+        { con: [...pubSignId, ...privSignId] },
         undefined,
-        { pubSignId: pubSignPolicy.con, privSignId: privSignPolicy.con }
+        { pubSignId, privSignId }
     )
     console.log('got public signing key for Alice: ', pubSignKey)
     console.log('got private signing key for Alice: ', privSignKey)
